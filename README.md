@@ -1,2 +1,2 @@
-# QEEG-Analysis
+# QEEG
 Scripts for quick QEEG analysis at CCDL
