@@ -233,7 +233,7 @@ analyze.logfile <- function(fname, sampling=256, window=2, sliding=0.75) {
 	
 	file <- paste(fname, sep="")
 	if ( file.exists(file) ) {
-		data <- read.table(file, header=T)
+		data <- read.table(file, header=T, sep="\t")
 	  print(dim(data))
 		result <- list("File"=fname, "Version" = version, "Sampling"=sampling,
 		               "Window"=window, "Sliding"=sliding, "Duration"=dim(data)[1])
