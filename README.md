@@ -67,10 +67,32 @@ The script does not assume any specific EEG data file format (such as
 way, with each sample in a row, and each channel in a column. The
 script assume that column have names (for example, `AF3`).
 
+### Quality data
+
+In addition to channel-specific columns, the script will try to look
+for columns containing quality values for each channel; these kind of
+meta-data is contained in columns that have the same name as the
+channel, with the `_Q` suffix. For instance, the quality meta-data for
+channel `AF3` is contained in the column `AF3_Q` (see below).
+
+Following Emotiv's scheme, the quality data is made of arbitrary
+ordinal numerical values, where `4` represents god quality and `0`
+represents data to be discarded. The script discards segments where
+data quality is < 2.
+
+Quality meta-columns can be used to associate information about
+impedances (if the information is available) or to mark specific
+segments for removal (for instance, after manually inspecting a time
+series and flagging artifacts).  
+
+### Counters, Blinks, and Motion
+
 In addition to standard channels, the script handles count data
-(`Counter`), gyro motion data (`X`, `Y`, and `Z`), and blink column
-artifacts (`Blink`, expected to be 0 for normal and > 0 for any
-measure of blink artifact).  
+(`Counter`), gyro motion data (`GyroX`, `GyroY`, and `GyroZ`), and
+blink column artifacts (`Blink`, expected to be 0 for normal and > 0
+for any measure of blink artifact).
+
+### Example
 
 Here is an example of the data format (from Emotiv):
 
@@ -78,6 +100,13 @@ Here is an example of the data format (from Emotiv):
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | 
 | 62.000000 | 4180.512821 | 4251.794872 | 4279.487179 | 3505.641026 | 4260.000000 | 4446.153846 | 4530.256410 | 4328.717949 | 3927.692308 | 3912.820513 | 4342.564103 | 4316.410256 | 4089.743590 | 3798.461538 | 1739.000000 | 1677.000000 | 20391.372000 | 0.000000 | 0.000000 | 0.000000 | 0.000000 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 0 | 0 | 0 | 1 | 0.000 | 0.000 |
 | 63.000000 | 4189.743590 | 4253.333333 | 4285.128205 | 3502.051282 | 4280.000000 | 4467.179487 | 4544.615385 | 4339.487179 | 3941.025641 | 3944.102564 | 4358.974359 | 4330.256410 | 4100.512821 | 3811.282051 | 1739.000000 | 1677.000000 | 20391.372000 | 0.000000 | 0.000000 | 0.000000 | 0.000000 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 0 | 0 | 0 | 1 | 0.000 | 0.000 |
+
+### Other formats
+
+Other formats od data will need to be converted to the format
+specified above to work with our QEEG script.  An example sheel script
+that converts the native OpenBCI format to our Emotiv-derived format
+can be found in `convert-to-emotiv.sh`. 
 
 ## Data Output
 
