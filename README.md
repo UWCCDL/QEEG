@@ -110,9 +110,39 @@ can be found in `convert-to-emotiv.sh`.
 
 ## Data Output
 
-The script will output a three _text_ files and one _pdf_ file:
+The script will output a three _text_ files and a variable number of
+_pdf_ files. The text files will be:
 
-1. the `subject_session_summary.txt` file.
-2. the `subject_session_frequencies.txt` file.
-3. the `subject_session_coherence.txt` file.
-4. the `subject_session.pdf` file.
+1. The `<subject>_<session>_summary.txt` file. This a 2-line file that
+contains a summary of the frequency powers across all channels, plus a
+number of other informative data (e.g., frequency and power of the
+individual alpha peak at each channel) and meta-data (script version,
+number of epochs analyzed). 
+
+2. The `<subject>_<session>_spectra.txt` file. This is a text file
+with (_N_ + 1) rows and 40/_H_ columns, where _N_ is the number of
+channels in the log file and _H_ is the minimum resolution (in Hz) of
+the script (which is defined by the value of the _window_ parameter).
+
+3. The `<subject>_<session>_coherence.txt` file.
+
+In addition to the text files, the script will also output the
+following _pdf_ files:
+
+1. _N_ `<subject>_<session>_<spectrum>_<channel>.pdf` files, where _N_
+is the number of channels. Each file will plot the spectrogram
+(between 0 and 40 Hz) with different colors indicating the different
+frequency bands, and a _quality bar_, indicating the quality of the
+recording over time with dark marks indicating blinks.
+
+1. _N_ * (_N - 1) / 2
+`<subject>_<session>_<coherence>_<channel1>_<channel2>.pdf` files,
+where _N_ is the number of channels. Each file will plot the
+coherence between the two channels between 0 and 40 Hz, with different
+colors indicating the different frequency bands, and two _quality
+bars_, indicating the quality of the recording over time with dark
+marks indicating blinks.
+
+Here is an example of a spectrum plot generated from the script:
+
+![spectrum plot](./example/example_spectrum.png)
