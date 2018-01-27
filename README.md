@@ -147,5 +147,3 @@ Here is an example of a spectrum plot generated from the script:
 
 ![spectrum
  plot](example_spectrum.jpg)
-
-![Image of Yaktocat](https://octodex.github.com/images/yaktocat.png)
