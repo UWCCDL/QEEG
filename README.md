@@ -146,6 +146,6 @@ marks indicating blinks.
 Here is an example of a spectrum plot generated from the script:
 
 ![spectrum
- plot](https://github.com/UWCCDL/QEEG/tree/master/example/example_spectrum.jpg)
+ plot](QEEG/example/example_spectrum.jpg)
 
 ![Image of Yaktocat](https://octodex.github.com/images/yaktocat.png)
