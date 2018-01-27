@@ -145,4 +145,4 @@ marks indicating blinks.
 
 Here is an example of a spectrum plot generated from the script:
 
-![spectrum plot](./example/example_spectrum.png)
+![spectrum plot](https://github.com/UWCCDL/QEEG/tree/master/example/example_spectrum.png)
