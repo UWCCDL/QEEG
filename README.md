@@ -135,7 +135,7 @@ is the number of channels. Each file will plot the spectrogram
 frequency bands, and a _quality bar_, indicating the quality of the
 recording over time with dark marks indicating blinks.
 
-1. _N_ * (_N - 1) / 2
+1. _N_ * (_N_ - 1) / 2
 `<subject>_<session>_<coherence>_<channel1>_<channel2>.pdf` files,
 where _N_ is the number of channels. Each file will plot the
 coherence between the two channels between 0 and 40 Hz, with different
@@ -145,4 +145,4 @@ marks indicating blinks.
 
 Here is an example of a spectrum plot generated from the script:
 
-![spectrum plot](https://github.com/UWCCDL/QEEG/tree/master/example/example_spectrum.png)
+![spectrum plot] (https://github.com/UWCCDL/QEEG/tree/master/example/example_spectrum.png)
