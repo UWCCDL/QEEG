@@ -143,7 +143,12 @@ colors indicating the different frequency bands, and two _quality
 bars_, indicating the quality of the recording over time with dark
 marks indicating blinks.
 
-Here is an example of a spectrum plot generated from the script:
+Here is an example of a spectrum plot generated from the script from
+the channel O2. The plot showcases the result of processing a dataset
+affected by poor recording quality (note the quality bar going from
+gree to yellow to orange) and many discarded segments (only 36 samples
+remained after the automated quality checks; note the large number of
+blinks on the quality bar).   
 
 ![spectrum
  plot](example_spectrum.jpg)
