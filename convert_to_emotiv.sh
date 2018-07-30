@@ -11,20 +11,23 @@
 ## ---------------------------------------------------------------- ## 
 
 
-if [ -e header.txt ]; then
-    # If we have a header file, then we write it into
-    # the temp file
-    cat header.txt >> file.tmp
-fi
+for file in "$@"; do
+	echo "Processing file $file"
+	if [ -e header.txt ]; then
+		# If we have a header file, then we write it into
+		# the temp file
+		cat header.txt >> file.tmp
+	fi
 
-# First we count the lines in the file 
-n=`grep -v "%" $1 | wc | awk '{print $1}'`
-echo $n
-# Remove the first 5 seconds (@ 256Hz)
-l=$((n - 1280))
-echo $l
-# Write the last (N-5) seconds of recording on temp file
-grep -v "%" ${1} | tail -${l} | tr ',' '\t' >> file.tmp
+	# First we count the lines in the file 
+	n=`grep -v "%" $1 | wc | awk '{print $1}'`
+	echo $n
+	# Remove the first 5 seconds (@ 256Hz)
+	l=$((n - 1280))
+	echo $l
+	# Write the last (N-5) seconds of recording on temp file
+	grep -v "%" ${file} | tail -${l} | tr ',' '\t' >> file.tmp
 
-# Overwrite the original file
-mv file.tmp $1
+	# Overwrite the original file
+	mv file.tmp $file
+done
