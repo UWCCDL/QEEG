@@ -7,7 +7,9 @@ version = "3.1.3"
 # 
 # [Andrea] 3.1.3 -- 2017.03.07--
 #                * Fixed a bug in spectral quality estimate (thanks
-#                  to BLY for catching it!)
+#                  to BLY for catching it!).
+#                * Switched to GitHub for versioning
+#
 # [Andrea] 3.1.2 -- 2016.11.29--
 #                * Fixed the NAs for LongestQualityRun (for real).
 #                * Outputs a coherence table (in addition to spectral
@@ -35,6 +37,7 @@ version = "3.1.3"
 # [Andrea]  2.1: * Added removal of channel segments based on quality
 #                * Fixed blink removal (previously ineffective)
 #                * Added version number to log file. 
+#
 # [Andrea]  2.0: * Added plotting of two sessions on the same plot.
 
 library(e1071)
