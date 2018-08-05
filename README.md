@@ -65,7 +65,9 @@ in the alpha band (8-13 Hz) that is surrounde by two lower values.
 The script does not assume any specific EEG data file format (such as
 .edf). Instead, it assumes that the data is formatted in an R-friendly
 way, with each sample in a row, and each channel in a column. The
-script assume that column have names (for example, `AF3`).
+script assume that column have names (for example, `AF3`) that correspond
+to individual channels. See below for ways to convert other data types
+into this format.
 
 ### Quality data
 
@@ -101,12 +103,6 @@ Here is an example of the data format (from Emotiv):
 | 62.000000 | 4180.512821 | 4251.794872 | 4279.487179 | 3505.641026 | 4260.000000 | 4446.153846 | 4530.256410 | 4328.717949 | 3927.692308 | 3912.820513 | 4342.564103 | 4316.410256 | 4089.743590 | 3798.461538 | 1739.000000 | 1677.000000 | 20391.372000 | 0.000000 | 0.000000 | 0.000000 | 0.000000 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 0 | 0 | 0 | 1 | 0.000 | 0.000 |
 | 63.000000 | 4189.743590 | 4253.333333 | 4285.128205 | 3502.051282 | 4280.000000 | 4467.179487 | 4544.615385 | 4339.487179 | 3941.025641 | 3944.102564 | 4358.974359 | 4330.256410 | 4100.512821 | 3811.282051 | 1739.000000 | 1677.000000 | 20391.372000 | 0.000000 | 0.000000 | 0.000000 | 0.000000 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 0 | 0 | 0 | 1 | 0.000 | 0.000 |
 
-### Other formats
-
-Other formats od data will need to be converted to the format
-specified above to work with our QEEG script.  An example sheel script
-that converts the native OpenBCI format to our Emotiv-derived format
-can be found in `convert-to-emotiv.sh`. 
 
 ## Data Output
 
@@ -152,3 +148,15 @@ blinks on the quality bar).
 
 ![spectrum
  plot](example_spectrum.jpg)
+
+# Using the script with Other formats
+
+The script assumes that the data is organized as descrbed above.
+Other EEG data formats of data will need to be converted to the format
+specified above to work with our QEEG script.  This is usually fairly easy to do, since most EEG data formats are tabular, and assume channel data will be organized in some Time-by-Channel format. Thus, conversion is usually a matter of manipulating large data matrices (or, in certain cases, rotating them).
+
+As an example, I have provided here a shell script that converts the native OpenBCI format to our R-friendly format, together with a version of our script (`eeg.analysis.obci.new.r`) that has already been parametrized for OpenBCI Cyton boards.  The script is named  . The script simply reads the OpenBCI data file, and reformats it in our native format. Because OpenBCI headsets can use any arbitrary montage, the name of the channels needs to be supplied; the script will assume that the correct description can be found in the `header.txt` file.  
+
+# Corrections for Multiple Comparisons
+
+One of the problems with QEEG analysis is that researchers often have to repeat the same test across multiple channels. This creates, of course, a multiple comparisons problem. Traditional solutions to this problem do not work wellw with EEG channel data, because pretty much every measures that can be extracted from the channels' timeseries (power, coherence, etc.) is highly correlated between channels. Thus, a a Bonferroni-type correction would be unrealistically strong, and a FDR correction wil be crippled by the fact that the distrbution of p-values is fairly narrow.  Here I have provided a simple script, `alphasimeeg.py`, that adapts to EEG the solution originally proposed for fMRI data by the AFNI software development team. In essence, given a mean correlation between channels (which can be estimated easily), the script will perform Monte Carlo simulations and tally up the number of significant results that can be obtained by chance alone.    
