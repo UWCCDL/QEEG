@@ -55,7 +55,7 @@ gamma <- c(30, 40)
 band.names <- c("Delta", "Theta", "Alpha", "Low Beta", "Upper Beta", "High Beta", "Gamma")
 bands <- rbind(delta, theta, alpha, lower_beta, upper_beta, high_beta, gamma)
 
-spike_cutoff <- 100
+spike_cutoff <- 200
 
 create.time <- function(secs=10, sampling=128) {
 	seq(0, secs, 1/sampling)
@@ -91,8 +91,9 @@ longest.quality <- function(qvector, sampling = 128) {
   }
 }
 
-spectral.analysis <- function(series, sampling=128, length=4, sliding=0.75, hamming=F, 
-							  x=NULL, y=NULL, blink=NULL, quality=NULL) {
+spectral.analysis <- function(series, sampling=128, length=4, 
+                              sliding=0.75, hamming=F, 
+                              x=NULL, y=NULL, blink=NULL, quality=NULL) {
 	# Detrend the data
 	model <- lm(series ~ seq(1, length(series)))
 	series <- (series - predict(model))
@@ -126,23 +127,24 @@ spectral.analysis <- function(series, sampling=128, length=4, sliding=0.75, hamm
 	sd <- sd(series)
 	upper <- m + 3 * sd
 	lower <- m - 3 * sd
-	maxmin <- (max(sub) - min(sub))
 	#print(c(window, size))
 	for (i in seq(1, length(series) - window, size)) {
-		sub <- series[i : (i + window - 1)]
+		dsub <- series[i : (i + window - 1)]
 		bsub <- blink[i : (i + window - 1)]
 		qsub <- quality[i : (i + window - 1)]
+		maxmin <- (max(dsub) - min(dsub))
+		
 		#print(c(i, length(sub)))
-		if (length(sub[sub < lower | sub > upper]) == 0
+		if (length(dsub[dsub < lower | dsub > upper]) == 0
 		    & length(bsub[bsub > 0.5]) == 0 
 		    & min(qsub) > 1 
-		    & maxmin < spike_cuttoff) {
+		    & maxmin < spike_cutoff) {
 			n <- (n+1)
 			#partial <- Re(fft(sub)/sqrt(window))^2
 			if (hamming) {
-				sub <- sub * hamming.window(length(sub))
+				dsub <- dsub * hamming.window(length(sub))
 			}
-			partial <- Re(fft(sub))^2
+			partial <- Re(fft(dsub))^2
 			partial <- partial[1:spectrum_len]
 			result <- (result + partial)
 			#print(c(length(sub), result))
@@ -154,9 +156,10 @@ spectral.analysis <- function(series, sampling=128, length=4, sliding=0.75, hamm
 	result <- (result / n)
 	result <- log(result)
 	
-	struct = list("Samples"=n, "Freq"=seq(1/length, sampling/2, 1/length), "Spectrum"=result, 
+	struct <- list("Samples"=n, "Freq"=seq(1/length, sampling/2, 1/length), "Spectrum"=result, 
 	              "Sampling"=sampling, "Quality"=quality, "Blink"=blink,
 	              "LongestQualitySegment" = longest.quality(quality))
+	struct
 }
 
 #spectral.quality <- function(spect, limit = 40, threshold=0.4) {
@@ -420,9 +423,9 @@ plot.coherence <- function(cohr, window=2, name="(Unknown subject)", channel1="C
 iaf <- function(spect) {
 	freq <- spect$Freq
 	spectrum <- spect$Spectrum
-	peaks <- findpeaks(spectrum[freq >= alpha[1] & freq <= alpha[2]])
-	if (length(peaks[,1]) > 0) {
-		max <- max(peaks[,1])
+	peakz <- findpeaks(spectrum[freq >= alpha[1] & freq <= alpha[2]])
+	if (length(peakz[,1]) > 0) {
+		max <- max(peakz[,1])
 		freq[spectrum == max & freq >= alpha[1] & freq <= alpha[2]]
 	} else {
 		max <- max(spectrum[freq >= alpha[1] & freq < alpha[2]])
@@ -433,9 +436,9 @@ iaf <- function(spect) {
 iaf.power <- function(spect) {
 	freq <- spect$Freq
 	spectrum <- spect$Spectrum
-	peaks <- findpeaks(spectrum[freq >= alpha[1] & freq <= alpha[2]])
-	if (length(peaks[,1]) > 0) {
-		max(peaks[,1])
+	peakz <- findpeaks(spectrum[freq >= alpha[1] & freq <= alpha[2]])
+	if (length(peakz[,1]) > 0) {
+		max(peakz[,1])
 	} else {
 		max(spectrum[freq >= alpha[1] & freq < alpha[2]])
 	}
