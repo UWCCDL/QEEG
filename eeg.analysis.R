@@ -1,10 +1,13 @@
 # The new version includes blink counts and coherence analysis
-version = "3.1.4"
-
+version = "3.1.5"
 
 # ================================================================== #
 # Changelog
 # 
+# [Andrea] 3.1.5 -- 2019.11.15 --
+#                * Fixed a bug that was preventing correct sampling
+#                  rate across files in a folder.
+#
 # [Andrea] 3.1.3 -- 2017.03.07--
 #                * Fixed a bug in spectral quality estimate (thanks
 #                  to BLY for catching it!).
@@ -722,7 +725,7 @@ analyze.2logfiles <- function(subject1, subject2, session1, session2, sampling=1
 
 
 
-analyze.folders <- function(session.prefix="pre", sampling=128) {
+analyze.folders <- function(session.prefix="pre", sampling=128, window=2) {
 	for (d in dir()[file.info(dir())$isdir] ) {
 		#filepath <- dir(d, full.names=T)[length(dir(d))]
 		#filename <- dir(d, full.names=F)[length(dir(d))]
@@ -741,7 +744,7 @@ analyze.folders <- function(session.prefix="pre", sampling=128) {
 			#dur <- min(secs, 300)
 			print(paste("Duration", secs))
 			#best.duration <- (mins * 60 * sampling)
-			analyze.logfile(d, session)
+			analyze.logfile(d, session, sampling = sampling, window = window)
 
 		} else {
 			print(paste("File", file, "does not exist"))
