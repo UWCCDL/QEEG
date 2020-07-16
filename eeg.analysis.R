@@ -1,9 +1,14 @@
-# The new version includes blink counts and coherence analysis
-version = "3.1.5"
+# The new version enables IAF-based frequency bands
+version = "4.1"
 
 # ================================================================== #
 # Changelog
 # 
+# [Kinsey] 4.1.0 -- 2020.07.16 --
+#                * Added individualized frequency band functionality
+#                  to better identify IAFs and draw frequency bands 
+#                  WRT the IAF
+#
 # [Andrea] 3.1.5 -- 2019.11.15 --
 #                * Fixed a bug that was preventing correct sampling
 #                  rate across files in a folder.
@@ -45,21 +50,51 @@ version = "3.1.5"
 
 library(e1071)
 library(pracma)
+library(plyr)
+library(reshape)
+library(reshape2)
+library(Rmisc)
 
-# Let's create a time axis with N seconds at Sampling Frequency FS:
 
-delta <- c(0, 4)
-theta <- c(4, 8)
-alpha <- c(8, 13)
-lower_beta <- c(13, 15)
-upper_beta <- c(15, 18)
-high_beta <- c(18, 30)
-gamma <- c(30, 40)
-band.names <- c("Delta", "Theta", "Alpha", "Low Beta", "Upper Beta", "High Beta", "Gamma")
-bands <- rbind(delta, theta, alpha, lower_beta, upper_beta, high_beta, gamma)
+#Function to define the frequency bands according to the "band_method" argument
+draw_bands <- function(band_method, wholeheadiaf = NULL) {
+  if (band_method == "IBIW") {
+    if (is.null(wholeheadiaf)) wholeheadiaf <- 10
+    delta <- c(0, wholeheadiaf*0.4)
+    theta <- c(wholeheadiaf*0.4, wholeheadiaf*0.8)
+    alpha <- c(wholeheadiaf*0.8, wholeheadiaf*1.2)
+    low_beta <- c(wholeheadiaf*1.25, wholeheadiaf*1.8)
+    high_beta <- c(wholeheadiaf*1.85, wholeheadiaf*3)
+    gamma <- c(wholeheadiaf*3.05, 40)
+    band.names <- c("Delta", "Theta", "Alpha", "Low_Beta", "High_Beta", "Gamma")
+    bands <- rbind(delta, theta, alpha, lower_beta, upper_beta, high_beta, gamma)
+  } else if (band_method == "IBFW") {
+    if (is.null(wholeheadiaf)) wholeheadiaf <- 10
+    delta <- c(0, wholeheadiaf-6)
+    theta <- c(wholeheadiaf-6, wholeheadiaf-1.5)
+    alpha <- c(wholeheadiaf-2, wholeheadiaf+2)
+    low_beta <- c(wholeheadiaf+2.5, wholeheadiaf+8)
+    high_beta <- c(wholeheadiaf+8.5, wholeheadiaf+20)
+    gamma <- c(wholeheadiaf+20.5, 40)
+    band.names <- c("Delta", "Theta", "Alpha", "Low_Beta", "High_Beta", "Gamma")
+    bands <- rbind(delta, theta, alpha, lower_beta, upper_beta, high_beta, gamma)
+  } else {
+    delta <- c(0, 4)
+    theta <- c(4.5, 7.5)
+    alpha <- c(8, 12)
+    low_beta <- c(12.5, 18)
+    high_beta <- c(18.5, 30)
+    gamma <- c(30.5, 40)
+    band.names <- c("Delta", "Theta", "Alpha", "Low_Beta", "High_Beta", "Gamma")
+    bands <- rbind(delta, theta, alpha, lower_beta, upper_beta, high_beta, gamma)
+  }
+}
+
+
 
 spike_cutoff <- 200
 
+# Let's create a time axis with N seconds at Sampling Frequency FS:
 create.time <- function(secs=10, sampling=128) {
 	seq(0, secs, 1/sampling)
 }    
@@ -73,10 +108,6 @@ hz.cos <- function(time, hertz) {
 	cos(2 * pi * time * hertz)
 }
 
-
-best.segment <- function(data, duration=3*60, quality) {
-	#identifies the best 3 minutes of recording in a signal.
-}
 
 
 longest.quality <- function(qvector, sampling = 128) {
@@ -165,14 +196,6 @@ spectral.analysis <- function(series, sampling=128, length=4,
 	struct
 }
 
-#spectral.quality <- function(spect, limit = 40, threshold=0.4) {
-#  p <- spect$Spectrum[ spect$Freq <= limit]
-#  n <- length(p)
-#  d1 <- p[2 : n] - p[1 : (n - 1)]
-#  rl <- rle(sign(d1))
-#  1 - length(rl$lengths) / n
-#}
-
 spectral.quality <- function(spect, limit = 40) {
   p <- spect$Spectrum[ spect$Freq <= limit]
   n <- length(p)
@@ -182,7 +205,6 @@ spectral.quality <- function(spect, limit = 40) {
 
 coherence.analysis <- function(series1, series2, sampling=128, length=4, sliding=0.75, hamming=F, 
                                x=NULL, y=NULL, blink=NULL, quality1=NULL, quality2=NULL) {
-  #print(paste(c("Coherence")))
   L <- min(length(series1), length(series2))
   # Detrend the data
   model <- lm(series1 ~ seq(1, length(series1)))
@@ -217,7 +239,6 @@ coherence.analysis <- function(series1, series2, sampling=128, length=4, sliding
   # overlap of OVERLAP.
   
   ol = length * sliding
-  #n = floor(length(series)/ (sampling * 2))
   n = 0
   size = sampling * (length * sliding) 
   window = sampling * length
@@ -235,7 +256,6 @@ coherence.analysis <- function(series1, series2, sampling=128, length=4, sliding
   upper2 <- m2 + 3 * sd2
   lower2 <- m2 - 3 * sd2
   
-  #print(c(window, size))
   for (i in seq(1, L - window, size)) {
     sub1 <- series1[i : (i + window - 1)]
     sub2 <- series2[i : (i + window - 1)]
@@ -243,8 +263,6 @@ coherence.analysis <- function(series1, series2, sampling=128, length=4, sliding
     bsub <- blink[i : (i + window - 1)]
     qsub1 <- quality1[i : (i + window - 1)]
     qsub2 <- quality2[i : (i + window - 1)]
-    
-    #print(c(i, length(sub)))
     
     if (length(sub1[sub1 < lower1 | sub1 > upper1]) == 0 
         & length(sub1[sub2 < lower2 | sub2 > upper2]) == 0
@@ -280,7 +298,6 @@ plot.quality <- function(quality, sampling=128, blink=NULL) {
 	
 	plot.new()
 	s <- n / (sampling * 60)
-	#df$index <- df$index / (sampling * 60)
 	plot.window(xlim=c(0, s), ylim=c(0, 1), xaxs="i", yaxs="i")
 	axis(1, at=seq(0, s, 1))
 	axis(2, tick=F, labels=F)
@@ -288,7 +305,6 @@ plot.quality <- function(quality, sampling=128, blink=NULL) {
 	for (j in df$index[df$delta != 0]) {
 		x0 <- (i+1) / (sampling * 60)
 		x1 <- j / (sampling * 60)
-		#print(c(x0, 0, x1, 1))
 		rect(x0, 0, x1, 1, col=colors[1 + median(df$quality[i:j])], border="NA")
 		i <- j
 	}
@@ -319,19 +335,15 @@ plot.spectrum <- function(spect, window=2, name="(Unknown subject)", channel="(U
 	for (i in 1:dim(bands)[1]) {
 		rect(bands[i, 1], ymin-1, bands[i, 2], ymax+1, col=band.colors[i], border=NA)	
 	}
-	#print("Grid")
 	grid(nx=8, ny=5, col="white")
 	
-	#print("Line")
 	lines(x = freq[freq > 1], y=spect$Spectrum[freq>1], lwd=4, col="black")
-	
+	################################################################################IAF stuff here
 	# Mark the IAF
-	#print("IAF marked")
 	iaf <- iaf(spect)
 	print(paste(channel, "IAF:", iaf))
 	points(x=iaf, y=spect$Spectrum[freq == iaf], cex=1, pch=23, bg="darkred", col="red")
 	
-	#print("Final touches")
 	box(bty = "o")
 	title(main = paste(name, "\n", "Spectrogram of", channel, paste("(n=", spect$Samples, ")", sep="")), ylab="Log Power", xlab="Frequency (Hz)")
 	text(x=rowMeans(bands), y=ymax-0.5, labels=gsub(" ", "\n", band.names), cex=0.75, adj=c(1/2,1))
@@ -347,16 +359,9 @@ plot.2spectra <- function(spect1, spect2, name="Spectra") {
 	freq1 = spect1$Freq
 	freq2 = spect2$Freq
 	sampling <- spect1$Sampling
-	#print(c(length(spect$Freq), length(spect$Spectrum)))
-	#print(spect$Freq)
-	#res = 1/window
-	
-	#band.colors <- c("grey", "yellow", "orange", "red", "grey")
-	#band.colors <- c("grey", "lightgrey", "green", "lightgrey", "grey")
-	#band.colors <- heat.colors(5)
+
 	band.colors <- rainbow(dim(bands)[1], alpha=1/2)
-	#band.colors <- topo.colors(5)
-		
+
 	plot.new()
 	plot.window(xlim=c(0, 40), ylim=c(ymin, ymax), xaxs="i", yaxs="i")
 	axis(1, at=seq(0, 40, 10))
@@ -366,22 +371,19 @@ plot.2spectra <- function(spect1, spect2, name="Spectra") {
 	for (i in 1:dim(bands)[1]) {
 		rect(bands[i, 1], ymin-1, bands[i, 2], ymax+1, col=band.colors[i], border=NA)	
 	}
-	#print("Grid")
 	grid(nx=8, ny=5, col="white")
 	
-	#print("Line")
 	lines(x = freq1[freq1 > 1], y=spect1$Spectrum[freq1 > 1], lwd=4, col="black")
 	lines(x = freq2[freq2 > 1], y=spect2$Spectrum[freq2 > 1], lwd=4, col="grey")
 	
+	################################################################################IAF stuff here
 	# Mark the IAF
-	#print("IAF marked")
 	iaf1 <- iaf(spect1)
 	points(x=iaf1, y=spect1$Spectrum[freq1=iaf1], cex=1, pch=23, bg="darkred", col="red")
 	
 	iaf2 <- iaf(spect2)
 	points(x=iaf2, y=spect2$Spectrum[freq2=iaf2], cex=1, pch=23, bg="red", col="red")
 	
-	#print("Final touches")
 	box(bty="o")
 	title(main=name, ylab="Log Power", xlab="Frequencies")
 	text(x=rowMeans(bands), y=ymax-0.5, labels=gsub(" ", "\n", band.names), cex=0.75, adj=c(1/2,1))
@@ -408,7 +410,6 @@ plot.coherence <- function(cohr, window=2, name="(Unknown subject)", channel1="C
 
   grid(nx=8, ny=5, col="white")
   
-  #print("Line")
   lines(x = freq[freq > 1], y = cohr$Coherence[freq > 1], lwd=4, col="black")
   
   box(bty = "o")
@@ -423,6 +424,7 @@ plot.coherence <- function(cohr, window=2, name="(Unknown subject)", channel1="C
   title(main = channel2)
 }
 
+################################################################################IAF stuff here
 iaf <- function(spect) {
 	freq <- spect$Freq
 	spectrum <- spect$Spectrum
@@ -458,10 +460,10 @@ mean.power<-function(spectrum, band) {
 mean.coherence <- function(cohr, band) {
   freq <- cohr$Freq
   coherence <- cohr$Coherence
-  mean(coherence[freq >= band[1] & freq < band[2]])
+  mean(coherence[freq >= band[1] & freq <= band[2]])
 }
 
-analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.75) {	
+analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.75, band_method="FBFW") {	
 	channels <- c("AF3", "F7", "F3", "FC5", 
 	              "T7", "P7", "O1", "O2", 
 	              "P8", "T8", "FC6", "F4", 
@@ -490,7 +492,6 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 		c_textdata <- NULL   # Coherence text data
 		
 		for (ch in channels) {
-			#print(ch)
 			ts <- data[[ch]]
 			ts <- ts[1 : samples]
 			qty <- data[[paste(ch, "Q", sep="_")]]
@@ -506,7 +507,7 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 			                    c(subject, ch, spectrum$Spectrum))
 			  
 			}
-			
+			##############DO MAJOR WORK HERE
 			for (j in 1:length(band.names)) {
 				result[paste(ch, "_mean_", band.names[j], "_power", sep="")] <- mean.power(spectrum, bands[j,])
 			}
