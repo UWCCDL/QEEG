@@ -202,15 +202,15 @@ coherence.analysis <- function(series1, series2, sampling=128, length=4, sliding
   }
   
   if (is.null(blink)) {
-    blink <- rep(0, length(series))
+    blink <- rep(0, length(series1))
   }
   
   if (is.null(quality1)) {
-    quality1 <- rep(5, length(series))  # Values of 5 are for "Information not available"
+    quality1 <- rep(5, length(series1))  # Values of 5 are for "Information not available"
   }
 
   if (is.null(quality2)) {
-    quality2 <- rep(5, length(series))  # Values of 5 are for "Information not available"
+    quality2 <- rep(5, length(series1))  # Values of 5 are for "Information not available"
   }
   
   # divide series into blocks of BLOCK seconds, with
