@@ -67,17 +67,19 @@ draw_bands <- function(band_method, wholeheadiaf = NULL) {
     high_beta <- c(wholeheadiaf*1.85, wholeheadiaf*3)
     gamma <- c(wholeheadiaf*3.05, 40)
     band.names <- c("Delta", "Theta", "Alpha", "Low_Beta", "High_Beta", "Gamma")
-    bands <- rbind(delta, theta, alpha, lower_beta, upper_beta, high_beta, gamma)
+    bands <- rbind(delta, theta, alpha, low_beta, high_beta, gamma)
+    list(band.names = band.names, bands = bands)
   } else if (band_method == "IBFW") {
     if (is.null(wholeheadiaf)) wholeheadiaf <- 10
     delta <- c(0, wholeheadiaf-6)
-    theta <- c(wholeheadiaf-6, wholeheadiaf-1.5)
-    alpha <- c(wholeheadiaf-2, wholeheadiaf+2)
-    low_beta <- c(wholeheadiaf+2.5, wholeheadiaf+8)
-    high_beta <- c(wholeheadiaf+8.5, wholeheadiaf+20)
+    theta <- c(wholeheadiaf-6, wholeheadiaf-2)
+    alpha <- c(wholeheadiaf-2, wholeheadiaf+2.5)
+    low_beta <- c(wholeheadiaf+2.5, wholeheadiaf+8.5)
+    high_beta <- c(wholeheadiaf+8.5, wholeheadiaf+20.5)
     gamma <- c(wholeheadiaf+20.5, 40)
     band.names <- c("Delta", "Theta", "Alpha", "Low_Beta", "High_Beta", "Gamma")
-    bands <- rbind(delta, theta, alpha, lower_beta, upper_beta, high_beta, gamma)
+    bands <- rbind(delta, theta, alpha, low_beta, high_beta, gamma)
+    list(band.names = band.names, bands = bands)
   } else {
     delta <- c(0, 4)
     theta <- c(4.5, 7.5)
@@ -86,7 +88,8 @@ draw_bands <- function(band_method, wholeheadiaf = NULL) {
     high_beta <- c(18.5, 30)
     gamma <- c(30.5, 40)
     band.names <- c("Delta", "Theta", "Alpha", "Low_Beta", "High_Beta", "Gamma")
-    bands <- rbind(delta, theta, alpha, lower_beta, upper_beta, high_beta, gamma)
+    bands <- rbind(delta, theta, alpha, low_beta, high_beta, gamma)
+    list(band.names = band.names, bands = bands)
   }
 }
 
@@ -193,6 +196,8 @@ spectral.analysis <- function(series, sampling=128, length=4,
 	struct <- list("Samples"=n, "Freq"=seq(1/length, sampling/2, 1/length), "Spectrum"=result, 
 	              "Sampling"=sampling, "Quality"=quality, "Blink"=blink,
 	              "LongestQualitySegment" = longest.quality(quality))
+	
+	names(struct$Spectrum) <- struct$Freq
 	struct
 }
 
@@ -203,7 +208,7 @@ spectral.quality <- function(spect, limit = 40) {
   sd(d1)
 }
 
-coherence.analysis <- function(series1, series2, sampling=128, length=4, sliding=0.75, hamming=F, 
+coherence.analysis <- function(series1, series2, netcon, sampling=128, length=4, sliding=0.75, hamming=F, 
                                x=NULL, y=NULL, blink=NULL, quality1=NULL, quality2=NULL) {
   L <- min(length(series1), length(series2))
   # Detrend the data
@@ -224,15 +229,15 @@ coherence.analysis <- function(series1, series2, sampling=128, length=4, sliding
   }
   
   if (is.null(blink)) {
-    blink <- rep(0, length(series))
+    blink <- rep(0, length(series1))
   }
   
   if (is.null(quality1)) {
-    quality1 <- rep(5, length(series))  # Values of 5 are for "Information not available"
+    quality1 <- rep(5, length(series1))  # Values of 5 are for "Information not available"
   }
 
   if (is.null(quality2)) {
-    quality2 <- rep(5, length(series))  # Values of 5 are for "Information not available"
+    quality2 <- rep(5, length(series2))  # Values of 5 are for "Information not available"
   }
   
   # divide series into blocks of BLOCK seconds, with
@@ -317,11 +322,12 @@ plot.quality <- function(quality, sampling=128, blink=NULL) {
 	box(bty="o")
 }
 
-plot.spectrum <- function(spect, window=2, name="(Unknown subject)", channel="(Unknown channel)") {
-	ymax = 15
-	ymin = 6
-	freq = spect$Freq
-	sampling <- spect$Sampling
+
+plot.spectrum <- function(spect, wholeheadiaf = NULL, window=2, name="(Unknown subject)", channel="(Unknown channel)") {
+	freq <- spect$Freq
+	samples <- spect$Samples
+  ymax = ceiling(max(spect$Spectrum)) + 0.5
+	ymin = floor(min(spect$Spectrum[freq <= 40])) - 1
 	band.colors <- rainbow(dim(bands)[1], alpha=1/2)
 
 	layout(as.matrix(1:2, by.row=F), heights=c(3,1))
@@ -338,14 +344,17 @@ plot.spectrum <- function(spect, window=2, name="(Unknown subject)", channel="(U
 	grid(nx=8, ny=5, col="white")
 	
 	lines(x = freq[freq > 1], y=spect$Spectrum[freq>1], lwd=4, col="black")
-	################################################################################IAF stuff here
-	# Mark the IAF
-	iaf <- iaf(spect)
-	print(paste(channel, "IAF:", iaf))
-	points(x=iaf, y=spect$Spectrum[freq == iaf], cex=1, pch=23, bg="darkred", col="red")
+	# Mark the channel IAF
+	ch.iaf <- iaf(spect$Spectrum, spect$Freq)
+	print(paste(channel, "IAF:", ch.iaf$freq))
+	points(x=ch.iaf$freq, y=ch.iaf$max, cex=1, pch=23, bg="darkred", col="red")
+	#Mark the WholeHeadIAF
+	if (!is.null(wholeheadiaf)){
+	  points(x=wholeheadiaf, y = spect$Spectrum[freq == wholeheadiaf], cex=1, pch=5, col="blue")
+	}
 	
 	box(bty = "o")
-	title(main = paste(name, "\n", "Spectrogram of", channel, paste("(n=", spect$Samples, ")", sep="")), ylab="Log Power", xlab="Frequency (Hz)")
+	title(main = paste(name, "\n", "Spectrogram of", channel, paste("(n=", samples, ")", sep="")), ylab="Log Power", xlab="Frequency (Hz)")
 	text(x=rowMeans(bands), y=ymax-0.5, labels=gsub(" ", "\n", band.names), cex=0.75, adj=c(1/2,1))
 	
 	# Plot quality
@@ -425,51 +434,58 @@ plot.coherence <- function(cohr, window=2, name="(Unknown subject)", channel1="C
 }
 
 ################################################################################IAF stuff here
-iaf <- function(spect) {
-	freq <- spect$Freq
-	spectrum <- spect$Spectrum
-	peakz <- findpeaks(spectrum[freq >= alpha[1] & freq <= alpha[2]])
-	if (length(peakz[,1]) > 0) {
+iaf <- function(spectrum, freq) {
+	peakz <- findpeaks(spectrum[freq >= 7 & freq <= 15], threshold = .2, sortstr = TRUE)
+	if (!is.null(peakz)) {
 		max <- max(peakz[,1])
-		freq[spectrum == max & freq >= alpha[1] & freq <= alpha[2]]
+		freq <- freq[spectrum == max & freq >= 7 & freq <= 15]
 	} else {
-		max <- max(spectrum[freq >= alpha[1] & freq < alpha[2]])
-		freq[spectrum == max & freq >= alpha[1] & freq < alpha[2]]
+		max <- NULL
+		freq <- NULL
 	}
+	list(freq = freq, max = max)
 }
 
-iaf.power <- function(spect) {
-	freq <- spect$Freq
-	spectrum <- spect$Spectrum
-	peakz <- findpeaks(spectrum[freq >= alpha[1] & freq <= alpha[2]])
-	if (length(peakz[,1]) > 0) {
-		max(peakz[,1])
-	} else {
-		max(spectrum[freq >= alpha[1] & freq < alpha[2]])
-	}
-}
+# iaf.power <- function(spect) {
+# 	freq <- spect$Freq
+# 	spectrum <- spect$Spectrum
+# 	peakz <- findpeaks(spectrum[freq >= alpha[1] & freq <= alpha[2]])
+# 	if (length(peakz[,1]) > 0) {
+# 		max(peakz[,1])
+# 	} else {
+# 		max(spectrum[freq >= alpha[1] & freq < alpha[2]])
+# 	}
+# }
 
 
 
-mean.power<-function(spectrum, band) {
-	freq <- spectrum$Freq
-	spect <- spectrum$Spectrum
-	mean(spect[freq >= band[1] & freq < band[2]])
+mean.power<-function(spectrum, freq, band) {
+	mean(spectrum[freq >= band[1] & freq < band[2]])
 }
 
 mean.coherence <- function(cohr, band) {
   freq <- cohr$Freq
   coherence <- cohr$Coherence
-  mean(coherence[freq >= band[1] & freq <= band[2]])
+  mean(coherence[freq >= band[1] & freq < band[2]])
 }
 
-analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.75, band_method="FBFW") {	
+analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.75, band_method="FBFW", coherence.plots = FALSE) {	
 	channels <- c("AF3", "F7", "F3", "FC5", 
 	              "T7", "P7", "O1", "O2", 
 	              "P8", "T8", "FC6", "F4", 
 	              "F8", "AF4")
 	
+	MF <- c("AF3", "AF4", "F3", "F4")
+	LFT <- c("F7", "FC5", "T7")
+	RFT <- c("F8", "FC6", "T8")
+	LP <- c("P7", "O1")
+	RP <- c("P8", "O2")
+	networks <- list("LFT" = LFT, "MF" = MF, "RFT" = RFT, "LP" = LP, "RP" = RP)
+
 	file <- paste(subject, "_", session, ".txt", sep="")
+	
+	allspectra <- list()
+	allcohr <- list()
 	
 	if ( file.exists(file) ) {
 		data <- read.table(file, header=T)
@@ -490,6 +506,7 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 		
 		textdata <- NULL     # Spectral text data
 		c_textdata <- NULL   # Coherence text data
+		exclude_channels <- NULL  #List of excluded channels
 		
 		for (ch in channels) {
 			ts <- data[[ch]]
@@ -499,37 +516,171 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 			spectrum <- spectral.analysis(ts, sampling, length=window, sliding=0.75, hamming=T,
 										  x=x, y=y, blink=blink, quality=qty)
 			
-			if ( is.null(textdata) ) {
-			  textdata <- rbind(c("Subject", "Channel", paste(spectrum$Freq, "Hz", sep = "")), 
-			                    c(subject, ch, spectrum$Spectrum))
+			allspectra[[ch]] <- spectrum
+			
+			if (is.null(textdata)) {
+			  textdata <- data.frame("Subject" = subject, 
+			                         "Freq" = spectrum$Freq, 
+			                         as.numeric(spectrum$Spectrum))
 			} else {
-			  textdata <- rbind(textdata, 
-			                    c(subject, ch, spectrum$Spectrum))
+			  textdata <- cbind(textdata, 
+			                    as.numeric(spectrum$Spectrum))
 			  
 			}
-			##############DO MAJOR WORK HERE
-			for (j in 1:length(band.names)) {
-				result[paste(ch, "_mean_", band.names[j], "_power", sep="")] <- mean.power(spectrum, bands[j,])
+			
+			#Exclude channel from whole-head analyses if 75 or fewer usable samples remain
+			if (spectrum$Samples <= 75) {
+			  if (is.null(exclude_channels)) {
+			    exclude_channels <- data.frame('Subject' = subject,
+			                                   "Channel" = ch,
+			                                   "Reason" = "75 samples or less",
+			                                   "ExcludedFrom" = "WholeHeadIAF, Network Power and Coherence")
+			  } else {
+			    exclude_channels <- rbind(exclude_channels, 
+			                              data.frame("Subject" = subject, 
+			                                         "Channel" = ch,
+			                                         "Reason" = "75 samples or less",
+			                                         "ExcludedFrom" = "WholeHeadIAF, Network Power and Coherence"))
+			  }
 			}
-			result[paste(ch, "IAF", sep="_")] <- iaf(spectrum)
-			result[paste(ch, "IAF", "Power", sep="_")] <- iaf.power(spectrum)
+			
+			#Find IAF frequency and power if peak meets criteria
+			#If no peak detected, add to excluded channels
+			ch.iaf <- iaf(spectrum$Spectrum, spectrum$Freq)
+			if (is.null(ch.iaf$freq)) {
+			  if (is.null(exclude_channels)) {
+			    exclude_channels <- data.frame('Subject' = subject,
+			                                   "Channel" = ch,
+			                                   "Reason" = "NoPeak",
+			                                   "ExcludedFrom" = "WholeHeadIAF")
+			  } else {
+			    exclude_channels <- rbind(exclude_channels, 
+			                              data.frame('Subject' = subject,
+			                                         "Channel" = ch,
+			                                         "Reason" = "NoPeak",
+			                                         "ExcludedFrom" = "WholeHeadIAF"))
+			  }
+			}
+			
+			result[paste(ch, "IAF", sep="_")] <- iaf(spectrum$Spectrum, spectrum$Freq)[1]
+			result[paste(ch, "IAF", "Power", sep="_")] <- iaf(spectrum$Spectrum, spectrum$Freq)[2]
 			result[paste("Meta", ch, "Samples", sep="_")] <- spectrum$Samples
 			result[paste("Meta", ch, "LongestQualitySegment", sep="_")] <- spectrum$LongestQualitySegment
 			result[paste("Meta", ch, "SpectralQuality", sep="_")] <- spectral.quality(spectrum)
+		}  ###End channel loop here
 		
-			pdf(file=paste(subject, "_", session, "_spectrum_", ch, ".pdf", sep=""), width=6, height=5.5)
-			plot.spectrum(spectrum, window, name=paste(subject, session, sep="/"), channel=ch)
-			dev.off()
+		#Using spectra data, find any channels with unusual activity (unusually high or low power compared to other channels) and exclude
+		colnames(textdata) <- c("Subject", "Freq", channels)
+		ave_chan_power <- colMeans(textdata[,c(3:ncol(textdata))])
+		badspectra <- ave_chan_power[ave_chan_power > (mean(ave_chan_power) + 3*sd(ave_chan_power)) | 
+		                               ave_chan_power < (mean(ave_chan_power) - 3*sd(ave_chan_power))]
+		if (length(badspectra) > 0) {
+		  if (is.null(exclude_channels)) {
+		    exclude_channels <- data.frame("Subject" = rep(subject, length(badspectra)),
+		                                   "Channel" = names(badspectra),
+		                                   "Reason" = rep("BadSpectrum", length(badspectra)),
+		                                   "ExcludedFrom" = rep("WholeHeadIAF, Network Power and Coherence", length(badspectra)))
+		  } else {
+		    exclude_channels <- rbind(cbind(subject, names(badspectra), "BadSpectrum", "WholeHeadIAF, Network Power and Coherence"))
+		  }
+		}
+		
+		#Remove any channels excluded for any reason before calculating whole head IAF
+		if (!is.null(exclude_channels)) {
+		  dataforiaf <- textdata[, !(names(textdata) %in% exclude_channels$Channel)]
+		} else {
+		  dataforiaf <- textdata
+		}
+		
+		dataforiaf$WholeHeadSpectrum <- rowMeans(dataforiaf[3:ncol(dataforiaf)])
+		wholeheadiaf <- iaf(dataforiaf$WholeHeadSpectrum, dataforiaf$Freq)$freq
+		
+		#For anybody missing peaks in BOTH O1 AND O2, skip wholeheadIAF calculation and default to traditional FBFW
+		if ("O1" %in% names(dataforiaf) | "O2" %in% names(dataforiaf)) {
+		  band.names <- draw_bands(band_method, wholeheadiaf)$band.names
+		  bands <- draw_bands(band_method, wholeheadiaf)$bands
+		} else {
+		  band.names <- draw_bands(band_method = "FBFW")$band.names
+		  bands <- draw_bands(band_method = "FBFW")$bands
+		  if (is.null(exclude_channels)) {
+		    exclude_channels <- data.frame("Subject" = subject,
+		                                   "Channel" = "All",
+		                                   "Reason" = "Missing O1 AND O2",
+		                                   "ExcludedFrom" = "Individualized Bands")
+		  } else {
+		    exclude_channels <- rbind(exclude_channels,
+		                              data.frame("Subject" = subject,
+		                                         "Channel" = "All",
+		                                         "Reason" = "Missing O1 AND O2",
+		                                         "ExcludedFrom" = "Individualized Bands"))
+		  }
+		}
+		
+		for (ch in channels) {
+		  spectrum <- allspectra[[ch]]
+		  for (j in 1:length(band.names)) {
+		    result[paste(ch, "_mean_", band.names[j], "_power", sep="")] <- mean.power(spectrum$Spectrum, freq = textdata$Freq, bands[j,])
+		  }
+		  pdf(file=paste(subject, "_", session, "_spectrum_", ch, ".pdf", sep=""), width=6, height=5.5)
+		  plot.spectrum(spectrum, wholeheadiaf, window, name=paste(subject, session, sep="/"), channel=ch)
+		  dev.off()
 		}
 
-		write.table(textdata, col.names = F, row.names = F, quote = F, sep = "\t",
+			#Network analysis: create spectra and mean power for each defined network/ROI
+		  #Append ROI spectra to textdata for output, append mean power to result
+		if (length(exclude_channels$Channel[grep("Network Power and Coherence", exclude_channels$ExcludedFrom)]) > 0) {
+		  channelsexcludedfromnetworks <- exclude_channels$Channel[grep("Network Power and Coherence", exclude_channels$ExcludedFrom)]
+		  datafornetworks <- textdata[,!(names(textdata) %in% channelsexcludedfromnetworks)]
+		} else {
+		  datafornetworks <- textdata
+		} 
+		
+		allROIspectra <- data.frame("Subject" = rep(subject, length(datafornetworks$Freq)),
+		                            "Freq" = datafornetworks$Freq)
+		for (network in c("LFT", "MF", "RFT", "LP", "RP")) {
+		  allROIspectra[[network]] <- rowMeans(datafornetworks[,names(datafornetworks) %in% networks[[network]]])
+		  for (j in 1:length(band.names)) {
+		    result[paste(network, "_mean_", band.names[j], "_power", sep="")] <- mean.power(allROIspectra[[network]], freq = datafornetworks$Freq, bands[j,])
+		  }
+		}
+		
+		textdata <- cbind(textdata, allROIspectra[, names(allROIspectra) %in% names(networks)])
+
+		#Put Spectra data into proper form for exporting and save out
+		textwide <- t(textdata[3:ncol(textdata)])
+		colnames(textwide) <- paste0(textdata$Freq, "Hz", sep = "")
+		textwide <- cbind("Subject" = rep(subject, nrow(textwide)), "Channel" = rownames(textwide), textwide)
+		write.table(textwide, col.names = T, row.names = F, quote = F, sep = "\t",
 		            file = paste(subject, session, "spectra.txt", sep = "_"))
 		
-		## Coherence analysis
+		## Coherence analysis:
+		#Still need to:
+		#Exclude bad channels from network coherence
+		#Compile network coherence (add netcon to cohr list and then cycle through unique netcons, grep them in allcohr, and average them?)
+		connections <- c()
 		for (i in  1 : (length(channels) - 1)) {
 		  for (j in  (i + 1) : length(channels)) {
 		    ch1 <- channels[i]
 		    ch2 <- channels[j]
+		    
+		    c1ROI <- ifelse(ch1 %in% exclude_channels$Channel[grep("Network Power and Coherence", exclude_channels$ExcludedFrom)],
+		                    "Exclude",
+		                    names(networks[grep(ch1, networks)]))
+		    
+		    c2ROI <- ifelse(ch2 %in% exclude_channels$Channel[grep("Network Power and Coherence", exclude_channels$ExcludedFrom)],
+		                    "Exclude",
+		                    names(networks[grep(ch2, networks)]))
+		    
+		    con <- paste(ch1, ch2, sep = "_")
+		    connections <- c(connections, con)
+		    
+		    #Not very generalizable at the moment- better implementation for applicabilty to other EEG systems?
+		    netcon <- ifelse(c1ROI == c2ROI, 
+		                     paste0(c1ROI, "_Within"), 
+		                     ifelse(c1ROI == "MF" & 
+		                              (c2ROI == "LP" | c2ROI == "RP" | c2ROI == "LFT" | c2ROI == "RFT"), 
+		                            paste0(c2ROI, "_to_", c1ROI), 
+		                            paste0(c1ROI, "_to_", c2ROI)))
 		    
 		    ts1 <- data[[ch1]]
 		    ts2 <- data[[ch2]]
@@ -543,28 +694,36 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 		    qty2 <- data[[paste(ch2, "Q", sep="_")]]
 		    qty2 <- qty2[1 : samples]
 		    print(paste("Coherence", ch1, ch2))
-		    cohr <- coherence.analysis(ts1, ts2, sampling, length=window, sliding=0.75, hamming=T,
+		    cohr <- coherence.analysis(ts1, ts2, netcon, sampling, length=window, sliding=0.75, hamming=T,
 		                                  x=x, y=y, blink=blink, quality1=qty1, quality2=qty2)
+		    allcohr[[con]] <- cohr
+		    
+		    ## Update coherence table
+		    if (is.null(c_textdata)) {
+		      c_textdata <- data.frame("Subject" = subject,
+		                             "Freq" = cohr$Freq, 
+		                             as.numeric(cohr$Coherence))
+		    } else {
+		      c_textdata <- cbind(c_textdata, 
+		                         as.numeric(cohr$Coherence))
+		    }
+		    
+		    
 		    for (j in 1:length(band.names)) {
 		      result[paste(ch1, ch2, "_coherence_mean_", band.names[j], "_power", sep="")] <- mean.coherence(cohr, bands[j,])
 		    }
-
-		    pdf(file=paste(subject, "_", session, "_coherence_", ch1, "_", ch2, ".pdf", sep=""), width=6, height=6.5)
-		    plot.coherence(cohr, window, name=paste(subject, session, sep="/"), channel1=ch1, channel2=ch2)
-		    dev.off()
-		    
-		    ## Update coherence table
-		    
-		    if ( is.null(c_textdata) ) {
-		      c_textdata <- rbind(c("Subject", "Channel1", "Channel2", paste(cohr$Freq, "Hz", sep = "")), 
-		                        c(subject, ch1, ch2, cohr$Coherence))
-		    } else {
-		      c_textdata <- rbind(c_textdata, 
-		                        c(subject, ch1, ch2, cohr$Coherence))
-		      
+        
+		    if (coherence.plots == TRUE) {
+		      pdf(file=paste(subject, "_", session, "_coherence_", ch1, "_", ch2, ".pdf", sep=""), width=6, height=6.5)
+		      plot.coherence(cohr, window, name=paste(subject, session, sep="/"), channel1=ch1, channel2=ch2)
+		      dev.off()
 		    }
 		  }
-		}
+		} #End channel cycling here
+		colnames(c_textdata) <- c("Subject", "Freq", connections)
+		
+		#Network coherence:
+		
 		
 		write.table(c_textdata, col.names = F, row.names = F, quote = F, sep = "\t",
 		            file = paste(subject, session, "coherence.txt", sep = "_"))
