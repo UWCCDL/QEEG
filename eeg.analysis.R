@@ -398,12 +398,12 @@ plot.2spectra <- function(spect1, spect2, name="Spectra") {
 	text(x=rowMeans(bands), y=ymax-0.5, labels=gsub(" ", "\n", band.names), cex=0.75, adj=c(1/2,1))
 }
 
-plot.coherence <- function(cohr, window=2, name="(Unknown subject)", channel1="Channel 1", channel2="Channel 2") {
+plot.coherence <- function(cohr, band.info, window=2, sampling, name="(Unknown subject)", channel1="Channel 1", channel2="Channel 2") {
+  freq <- cohr$Freq
+  sampling <- cohr$Sampling
   ymax = 1
   ymin = 0
-  freq = cohr$Freq
-  sampling <- cohr$Sampling
-  band.colors <- rainbow(dim(bands)[1], alpha=1/2)
+  band.colors <- rainbow(dim(band.info$bands)[1], alpha=1/2)
   
   layout(as.matrix(1:3, by.row=F), heights=c(3, 1, 1))
   par(mar=c(4, 4, 4, 2) + 0.1)
@@ -413,8 +413,8 @@ plot.coherence <- function(cohr, window=2, name="(Unknown subject)", channel1="C
   axis(2, at=seq(ymin, ymax, 0.1))
   
   # Draw the frequency bands
-  for (i in 1:dim(bands)[1]) {
-    rect(bands[i, 1], ymin-1, bands[i, 2], ymax+1, col=band.colors[i], border=NA)	
+  for (i in 1:dim(band.info$bands)[1]) {
+    rect(band.info$bands[i, 1], ymin-1, band.info$bands[i, 2], ymax+1, col=band.colors[i], border=NA)	
   }
 
   grid(nx=8, ny=5, col="white")
@@ -423,7 +423,7 @@ plot.coherence <- function(cohr, window=2, name="(Unknown subject)", channel1="C
   
   box(bty = "o")
   title(main = paste(name, "\nCoherence between", channel1, "and", channel2, paste("(n=", cohr$Samples, ")", sep="")), ylab="Coherence", xlab="Frequency (Hz)")
-  text(x=rowMeans(bands), y=0.95, labels=gsub(" ", "\n", band.names), cex=0.75, adj=c(1/2, 1))
+  text(x=rowMeans(band.info$bands), y=0.95, labels=gsub(" ", "\n", band.info$band.names), cex=0.75, adj=c(1/2, 1))
   
   # Plot quality
   par(mar=c(4, 4, 3, 2) + 0.1)
@@ -445,18 +445,6 @@ iaf <- function(spectrum, freq) {
 	}
 	list(freq = freq, max = max)
 }
-
-# iaf.power <- function(spect) {
-# 	freq <- spect$Freq
-# 	spectrum <- spect$Spectrum
-# 	peakz <- findpeaks(spectrum[freq >= alpha[1] & freq <= alpha[2]])
-# 	if (length(peakz[,1]) > 0) {
-# 		max(peakz[,1])
-# 	} else {
-# 		max(spectrum[freq >= alpha[1] & freq < alpha[2]])
-# 	}
-# }
-
 
 
 mean.power<-function(spectrum, freq, band) {
@@ -699,8 +687,8 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 		      
 		      
 		      if (coherence.plots == TRUE) {
-		        pdf(file=paste(subject, "_", session, "_coherence_", ch1, "_", ch2, ".pdf", sep=""), width=6, height=6.5)
-		        plot.coherence(cohr, window, name=paste(subject, session, sep="/"), channel1=ch1, channel2=ch2)
+		        pdf(file=paste(subject, "_", session, "_", con, "_coherence", ".pdf", sep=""), width=6, height=6.5)
+		        plot.coherence(cohr, band.info, window, name=paste(subject, session, sep="/"), channel1=ch1, channel2=ch2)
 		        dev.off()
 		      }
 		      
