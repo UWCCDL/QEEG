@@ -208,7 +208,7 @@ spectral.quality <- function(spect, limit = 40) {
   sd(d1)
 }
 
-coherence.analysis <- function(series1, series2, netcon, sampling=128, length=4, sliding=0.75, hamming=F, 
+coherence.analysis <- function(series1, series2, sampling=128, length=4, sliding=0.75, hamming=F, 
                                x=NULL, y=NULL, blink=NULL, quality1=NULL, quality2=NULL) {
   L <- min(length(series1), length(series2))
   # Detrend the data
@@ -323,12 +323,12 @@ plot.quality <- function(quality, sampling=128, blink=NULL) {
 }
 
 
-plot.spectrum <- function(spect, wholeheadiaf = NULL, window=2, name="(Unknown subject)", channel="(Unknown channel)") {
+plot.spectrum <- function(spect, wholeheadiaf = NULL, band.info, window=2, name="(Unknown subject)", channel="(Unknown channel)") {
 	freq <- spect$Freq
 	samples <- spect$Samples
   ymax = ceiling(max(spect$Spectrum)) + 0.5
 	ymin = floor(min(spect$Spectrum[freq <= 40])) - 1
-	band.colors <- rainbow(dim(bands)[1], alpha=1/2)
+	band.colors <- rainbow(dim(band.info$bands)[1], alpha=1/2)
 
 	layout(as.matrix(1:2, by.row=F), heights=c(3,1))
 	par(mar=c(4,4,4,2)+0.1)
@@ -338,8 +338,8 @@ plot.spectrum <- function(spect, wholeheadiaf = NULL, window=2, name="(Unknown s
 	axis(2, at=seq(ymin, ymax, 2.5))
 	
 	# Draw the frequency bands
-	for (i in 1:dim(bands)[1]) {
-		rect(bands[i, 1], ymin-1, bands[i, 2], ymax+1, col=band.colors[i], border=NA)	
+	for (i in 1:dim(band.info$bands)[1]) {
+		rect(band.info$bands[i, 1], ymin-1, band.info$bands[i, 2], ymax+1, col=band.colors[i], border=NA)	
 	}
 	grid(nx=8, ny=5, col="white")
 	
@@ -355,7 +355,7 @@ plot.spectrum <- function(spect, wholeheadiaf = NULL, window=2, name="(Unknown s
 	
 	box(bty = "o")
 	title(main = paste(name, "\n", "Spectrogram of", channel, paste("(n=", samples, ")", sep="")), ylab="Log Power", xlab="Frequency (Hz)")
-	text(x=rowMeans(bands), y=ymax-0.5, labels=gsub(" ", "\n", band.names), cex=0.75, adj=c(1/2,1))
+	text(x=rowMeans(band.info$bands), y=ymax-0.5, labels=gsub(" ", "\n", band.info$band.names), cex=0.75, adj=c(1/2,1))
 	
 	# Plot quality
 	par(mar=c(4, 4, 1, 2) + 0.1)
@@ -463,10 +463,8 @@ mean.power<-function(spectrum, freq, band) {
 	mean(spectrum[freq >= band[1] & freq < band[2]])
 }
 
-mean.coherence <- function(cohr, band) {
-  freq <- cohr$Freq
-  coherence <- cohr$Coherence
-  mean(coherence[freq >= band[1] & freq < band[2]])
+mean.coherence <- function(cohr, freq, band) {
+  mean(cohr[freq >= band[1] & freq < band[2]])
 }
 
 analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.75, band_method="FBFW", coherence.plots = FALSE) {	
@@ -490,8 +488,8 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 	if ( file.exists(file) ) {
 		data <- read.table(file, header=T)
 	  samples <- dim(data)[1]
-		result <- list("Subject"=subject, "Version" = version, "Session"=session, "Sampling"=sampling,
-		               "Window"=window, "Sliding"=sliding, "Duration" = (samples / sampling), "Blinks" = "NA")
+		result <- data.frame("Subject"=subject, "Version" = version, "Session"=session, "Sampling"=sampling,
+		               "Window"=window, "Sliding"=sliding, "Duration" = (samples / sampling), "Blinks" = "NA", "BandMethod" = band_method)
 		
 		
 		if ("Blink" %in% names(data)) {
@@ -562,8 +560,8 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 			  }
 			}
 			
-			result[paste(ch, "IAF", sep="_")] <- iaf(spectrum$Spectrum, spectrum$Freq)[1]
-			result[paste(ch, "IAF", "Power", sep="_")] <- iaf(spectrum$Spectrum, spectrum$Freq)[2]
+			result[paste(ch, "IAF", sep="_")] <- ifelse(is.null(ch.iaf$freq), "NA", ch.iaf$freq)
+			result[paste(ch, "IAF", "Power", sep="_")] <- ifelse(is.null(ch.iaf$max), "NA", ch.iaf$max)
 			result[paste("Meta", ch, "Samples", sep="_")] <- spectrum$Samples
 			result[paste("Meta", ch, "LongestQualitySegment", sep="_")] <- spectrum$LongestQualitySegment
 			result[paste("Meta", ch, "SpectralQuality", sep="_")] <- spectral.quality(spectrum)
@@ -597,11 +595,9 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 		
 		#For anybody missing peaks in BOTH O1 AND O2, skip wholeheadIAF calculation and default to traditional FBFW
 		if ("O1" %in% names(dataforiaf) | "O2" %in% names(dataforiaf)) {
-		  band.names <- draw_bands(band_method, wholeheadiaf)$band.names
-		  bands <- draw_bands(band_method, wholeheadiaf)$bands
+		  band.info <- draw_bands(band_method, wholeheadiaf)
 		} else {
-		  band.names <- draw_bands(band_method = "FBFW")$band.names
-		  bands <- draw_bands(band_method = "FBFW")$bands
+		  band.info <- draw_bands(band_method = "FBFW")
 		  if (is.null(exclude_channels)) {
 		    exclude_channels <- data.frame("Subject" = subject,
 		                                   "Channel" = "All",
@@ -618,11 +614,11 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 		
 		for (ch in channels) {
 		  spectrum <- allspectra[[ch]]
-		  for (j in 1:length(band.names)) {
-		    result[paste(ch, "_mean_", band.names[j], "_power", sep="")] <- mean.power(spectrum$Spectrum, freq = textdata$Freq, bands[j,])
+		  for (j in 1:length(band.info$band.names)) {
+		    result[paste(ch, "_mean_", band.info$band.names[j], "_power", sep="")] <- mean.power(spectrum$Spectrum, freq = textdata$Freq, band.info$bands[j,])
 		  }
 		  pdf(file=paste(subject, "_", session, "_spectrum_", ch, ".pdf", sep=""), width=6, height=5.5)
-		  plot.spectrum(spectrum, wholeheadiaf, window, name=paste(subject, session, sep="/"), channel=ch)
+		  plot.spectrum(spectrum, wholeheadiaf, band.info, window, name=paste(subject, session, sep="/"), channel=ch)
 		  dev.off()
 		}
 
@@ -637,10 +633,10 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 		
 		allROIspectra <- data.frame("Subject" = rep(subject, length(datafornetworks$Freq)),
 		                            "Freq" = datafornetworks$Freq)
-		for (network in c("LFT", "MF", "RFT", "LP", "RP")) {
+		for (network in names(networks)) {
 		  allROIspectra[[network]] <- rowMeans(datafornetworks[,names(datafornetworks) %in% networks[[network]]])
-		  for (j in 1:length(band.names)) {
-		    result[paste(network, "_mean_", band.names[j], "_power", sep="")] <- mean.power(allROIspectra[[network]], freq = datafornetworks$Freq, bands[j,])
+		  for (j in 1:length(band.info$band.names)) {
+		    result[paste(network, "_mean_", band.info$band.names[j], "_power", sep="")] <- mean.power(allROIspectra[[network]], freq = datafornetworks$Freq, band.info$bands[j,])
 		  }
 		}
 		
@@ -654,85 +650,102 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 		            file = paste(subject, session, "spectra.txt", sep = "_"))
 		
 		## Coherence analysis:
-		#Still need to:
-		#Exclude bad channels from network coherence
-		#Compile network coherence (add netcon to cohr list and then cycle through unique netcons, grep them in allcohr, and average them?)
-		connections <- c()
+		print("Running Coherence Analysis")
+		chan_connections <- c()
+		net_connections <- c()
 		for (i in  1 : (length(channels) - 1)) {
 		  for (j in  (i + 1) : length(channels)) {
 		    ch1 <- channels[i]
 		    ch2 <- channels[j]
 		    
-		    c1ROI <- ifelse(ch1 %in% exclude_channels$Channel[grep("Network Power and Coherence", exclude_channels$ExcludedFrom)],
-		                    "Exclude",
-		                    names(networks[grep(ch1, networks)]))
-		    
-		    c2ROI <- ifelse(ch2 %in% exclude_channels$Channel[grep("Network Power and Coherence", exclude_channels$ExcludedFrom)],
-		                    "Exclude",
-		                    names(networks[grep(ch2, networks)]))
-		    
-		    con <- paste(ch1, ch2, sep = "_")
-		    connections <- c(connections, con)
-		    
-		    #Not very generalizable at the moment- better implementation for applicabilty to other EEG systems?
-		    netcon <- ifelse(c1ROI == c2ROI, 
-		                     paste0(c1ROI, "_Within"), 
-		                     ifelse(c1ROI == "MF" & 
-		                              (c2ROI == "LP" | c2ROI == "RP" | c2ROI == "LFT" | c2ROI == "RFT"), 
-		                            paste0(c2ROI, "_to_", c1ROI), 
-		                            paste0(c1ROI, "_to_", c2ROI)))
-		    
-		    ts1 <- data[[ch1]]
-		    ts2 <- data[[ch2]]
-		    
-		    ts1 <- ts1[1 : samples]
-		    ts2 <- ts2[1 : samples]
-		    
-		    qty1 <- data[[paste(ch1, "Q", sep="_")]]
-		    qty1 <- qty1[1 : samples]
-		    
-		    qty2 <- data[[paste(ch2, "Q", sep="_")]]
-		    qty2 <- qty2[1 : samples]
-		    print(paste("Coherence", ch1, ch2))
-		    cohr <- coherence.analysis(ts1, ts2, netcon, sampling, length=window, sliding=0.75, hamming=T,
-		                                  x=x, y=y, blink=blink, quality1=qty1, quality2=qty2)
-		    allcohr[[con]] <- cohr
-		    
-		    ## Update coherence table
-		    if (is.null(c_textdata)) {
-		      c_textdata <- data.frame("Subject" = subject,
-		                             "Freq" = cohr$Freq, 
-		                             as.numeric(cohr$Coherence))
+		    if (!(ch1 %in% exclude_channels$Channel[grep("Network Power and Coherence", 
+		                                               exclude_channels$ExcludedFrom)]) &
+		        !(ch2 %in% exclude_channels$Channel[grep("Network Power and Coherence", 
+		                                                 exclude_channels$ExcludedFrom)])) {
+		      con <- paste(sort(c(ch1, ch2))[1], sort(c(ch1, ch2))[2], sep = "_")
+		      chan_connections <- c(chan_connections, con)
+		      
+		      net1 <- names(networks[grep(ch1, networks)])
+		      net2 <- names(networks[grep(ch2, networks)])
+		      
+		      netcon <- paste(sort(c(net1, net2))[1], sort(c(net1, net2))[2], sep = "_")
+		      net_connections <- c(net_connections, netcon)
+		      
+		      ts1 <- data[[ch1]]
+		      ts2 <- data[[ch2]]
+		      
+		      ts1 <- ts1[1 : samples]
+		      ts2 <- ts2[1 : samples]
+		      
+		      qty1 <- data[[paste(ch1, "Q", sep="_")]]
+		      qty1 <- qty1[1 : samples]
+		      
+		      qty2 <- data[[paste(ch2, "Q", sep="_")]]
+		      qty2 <- qty2[1 : samples]
+		      #print(paste("Coherence", ch1, ch2))
+		      cohr <- coherence.analysis(ts1, ts2, sampling, length=window, sliding=0.75, hamming=T,
+		                                 x=x, y=y, blink=blink, quality1=qty1, quality2=qty2)
+		      allcohr[[con]] <- cohr
+		      
+		      ## Update coherence table
+		      if (is.null(c_textdata)) {
+		        c_textdata <- data.frame("Subject" = subject,
+		                                 "Freq" = cohr$Freq, 
+		                                 as.numeric(cohr$Coherence))
+		      } else {
+		        c_textdata <- cbind(c_textdata, 
+		                            as.numeric(cohr$Coherence))
+		      }
+		      
+		      
+		      if (coherence.plots == TRUE) {
+		        pdf(file=paste(subject, "_", session, "_coherence_", ch1, "_", ch2, ".pdf", sep=""), width=6, height=6.5)
+		        plot.coherence(cohr, window, name=paste(subject, session, sep="/"), channel1=ch1, channel2=ch2)
+		        dev.off()
+		      }
+		      
+		      for (j in 1:length(band.info$band.names)) {
+		        result[paste(con, "_mean_", band.info$band.names[j], "_coherence", sep="")] <- mean.coherence(cohr$Coherence, cohr$Freq, band.info$bands[j,])
+		      }
 		    } else {
-		      c_textdata <- cbind(c_textdata, 
-		                         as.numeric(cohr$Coherence))
+		      for (j in 1:length(band.info$band.names)) {
+		        result[paste(con, "_mean_", band.info$band.names[j], "_coherence", sep="")] <- "NA"
+		      }
 		    }
-		    
-		    
-		    for (j in 1:length(band.names)) {
-		      result[paste(ch1, ch2, "_coherence_mean_", band.names[j], "_power", sep="")] <- mean.coherence(cohr, bands[j,])
-		    }
-        
-		    if (coherence.plots == TRUE) {
-		      pdf(file=paste(subject, "_", session, "_coherence_", ch1, "_", ch2, ".pdf", sep=""), width=6, height=6.5)
-		      plot.coherence(cohr, window, name=paste(subject, session, sep="/"), channel1=ch1, channel2=ch2)
-		      dev.off()
-		    }
-		  }
+		  } 
 		} #End channel cycling here
-		colnames(c_textdata) <- c("Subject", "Freq", connections)
 		
-		#Network coherence:
+		colnames(c_textdata) <- c("Subject", "Freq", chan_connections)
 		
+		net_c_textdata <- NULL
+		for (netcon in sort(unique(net_connections))) {
+		  if (is.null(net_c_textdata)) {
+		    net_c_textdata <- data.frame("Coh" = rowMeans(c_textdata[net_connections == netcon]))
+		  } else{
+		    net_c_textdata <- cbind(net_c_textdata, 
+		                            data.frame("Coh" = rowMeans(c_textdata[net_connections == netcon])))
+		  }
+		  
+		  for (j in 1:length(band.info$band.names)) {
+		    result[paste(netcon, "_mean_", band.info$band.names[j], "_coherence", sep="")] <- mean.coherence(cohr = rowMeans(c_textdata[net_connections == netcon]),
+		                                                                                           freq = c_textdata$Freq, band.info$bands[j,])
+		  }
+		}
 		
-		write.table(c_textdata, col.names = F, row.names = F, quote = F, sep = "\t",
+		colnames(net_c_textdata) <- sort(unique(net_connections))
+		c_textdata <- cbind(c_textdata, net_c_textdata)
+		
+		c_textwide <- t(c_textdata[3:ncol(c_textdata)])
+		colnames(c_textwide) <- paste0(c_textdata$Freq, "Hz", sep = "")
+		c_textwide <- cbind("Subject" = rep(subject, nrow(c_textwide)), "Connection" = rownames(c_textwide), c_textwide)
+		
+
+		write.table(c_textwide, col.names = T, row.names = F, quote = F, sep = "\t",
 		            file = paste(subject, session, "coherence.txt", sep = "_"))
 		
 	  
 		write.table(as.data.frame(result), file=paste(subject, "_", session, "_summary.txt", sep=""),
 		            quote=F, row.names=F, col.names=T, sep="\t")
-		
-		
 		          
 	} else {
 		print(paste("File", file, "does not exist"))
