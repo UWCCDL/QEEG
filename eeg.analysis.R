@@ -362,42 +362,6 @@ plot.spectrum <- function(spect, wholeheadiaf = NULL, band.info, window=2, name=
 	plot.quality(spect$Quality, blink=spect$Blink)
 }
 
-plot.2spectra <- function(spect1, spect2, name="Spectra") {
-	ymax = 15
-	ymin = 6
-	freq1 = spect1$Freq
-	freq2 = spect2$Freq
-	sampling <- spect1$Sampling
-
-	band.colors <- rainbow(dim(bands)[1], alpha=1/2)
-
-	plot.new()
-	plot.window(xlim=c(0, 40), ylim=c(ymin, ymax), xaxs="i", yaxs="i")
-	axis(1, at=seq(0, 40, 10))
-	axis(2, at=seq(ymin, ymax, 2.5))
-	
-	# Draw the frequency bands
-	for (i in 1:dim(bands)[1]) {
-		rect(bands[i, 1], ymin-1, bands[i, 2], ymax+1, col=band.colors[i], border=NA)	
-	}
-	grid(nx=8, ny=5, col="white")
-	
-	lines(x = freq1[freq1 > 1], y=spect1$Spectrum[freq1 > 1], lwd=4, col="black")
-	lines(x = freq2[freq2 > 1], y=spect2$Spectrum[freq2 > 1], lwd=4, col="grey")
-	
-	################################################################################IAF stuff here
-	# Mark the IAF
-	iaf1 <- iaf(spect1)
-	points(x=iaf1, y=spect1$Spectrum[freq1=iaf1], cex=1, pch=23, bg="darkred", col="red")
-	
-	iaf2 <- iaf(spect2)
-	points(x=iaf2, y=spect2$Spectrum[freq2=iaf2], cex=1, pch=23, bg="red", col="red")
-	
-	box(bty="o")
-	title(main=name, ylab="Log Power", xlab="Frequencies")
-	text(x=rowMeans(bands), y=ymax-0.5, labels=gsub(" ", "\n", band.names), cex=0.75, adj=c(1/2,1))
-}
-
 plot.coherence <- function(cohr, band.info, window=2, sampling, name="(Unknown subject)", channel1="Channel 1", channel2="Channel 2") {
   freq <- cohr$Freq
   sampling <- cohr$Sampling
@@ -433,7 +397,6 @@ plot.coherence <- function(cohr, band.info, window=2, sampling, name="(Unknown s
   title(main = channel2)
 }
 
-################################################################################IAF stuff here
 iaf <- function(spectrum, freq) {
 	peakz <- findpeaks(spectrum[freq >= 7 & freq <= 15], threshold = .2, sortstr = TRUE)
 	if (!is.null(peakz)) {
@@ -734,157 +697,138 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 	  
 		write.table(as.data.frame(result), file=paste(subject, "_", session, "_summary.txt", sep=""),
 		            quote=F, row.names=F, col.names=T, sep="\t")
+		
+		write.table(exclude_channels, file = paste(subject, "_", session, "_excludedchannels.txt", sep = ""),
+		            quote = F, row.names = F, col.names = T, sep = "\t")
 		          
 	} else {
 		print(paste("File", file, "does not exist"))
 	}
 }
 
-analyze.2logfiles <- function(subject1, subject2, session1, session2, sampling=128, window=2, sliding=0.75, duration=300) {	
-	channels <- c("AF3", "F7", "F3", "FC5", "T7", "P7", "O1", "O2", "P8", "T8", "FC6", "F4", "F8", "AF4")
-	
-	file1 <- paste(subject1, "_", session1, ".txt", sep="")
-	file2 <- paste(subject2, "_", session2, ".txt", sep="")
-	if ( file.exists(file1) & file.exists(file2) ) {
-		data1 <- read.table(file1, header=T)
-		data2 <- read.table(file2, header=T)
-		
-		result1 <- list("Subject"=subject1, "Session"=session1, "Sampling"=sampling,
-		               "Window"=window, "Sliding"=sliding, "Duration"=duration)
-		
-		result2 <- list("Subject"=subject2, "Session"=session2, "Sampling"=sampling,
-		               "Window"=window, "Sliding"=sliding, "Duration"=duration)
-		
-		if ("Blink" %in% names(data1)) {
-			blink1 <- data1$Blink[1:(sampling*duration)]
-			blink2 <- data2$Blink[1:(sampling*duration)]
-		} else {
-			blink1 <- rep(0, sampling*duration)
-			blink2 <- rep(0, sampling*duration)
-		}
-		
-		x1 <- data1$GyroX[1:(sampling*duration)]
-		y1 <- data1$GyroY[1:(sampling*duration)]
-		
-		x2 <- data2$GyroX[1:(sampling*duration)]
-		y2 <- data2$GyroY[1:(sampling*duration)]
-		
-		for (ch in channels) {
-			#print(ch)
-			ts1 <- data1[[ch]]
-			ts1 <- ts1[1:(sampling*duration)]
-			
-			ts2 <- data2[[ch]]
-			ts2 <- ts2[1:(sampling*duration)]
-			
-			spectrum1 <- spectral.analysis(ts1, sampling, length=window, sliding=0.75, hamming=T,
-										  x=x1, y=y1, blink=blink1)
-										  
-			spectrum2 <- spectral.analysis(ts2, sampling, length=window, sliding=0.75, hamming=T,
-										  x=x2, y=y2, blink=blink2)
+datacheck <- function(subject, session, sampling=128, window=2, sliding=0.75, min_samples = 75) {
+  channels <- c("AF3", "F7", "F3", "FC5", 
+                "T7", "P7", "O1", "O2", 
+                "P8", "T8", "FC6", "F4", 
+                "F8", "AF4")
+  
+  file <- paste(subject, "_", session, ".txt", sep="")
+  
+  allspectra <- list()
+  band.info <- draw_bands(band_method = "FBFW")
 
-			for (j in 1:length(band.names)) {
-				result1[paste(ch, "_mean_", band.names[j], "_power", sep="")] <- mean.power(spectrum1, bands[j,])
-				result2[paste(ch, "_mean_", band.names[j], "_power", sep="")] <- mean.power(spectrum2, bands[j,])
-			}
-			result1[paste(ch, "IAF", sep="_")] <- iaf(spectrum1)
-			result1[paste(ch, "IAF", "Power", sep="_")] <- iaf.power(spectrum1)
-			result1[paste(ch, "Samples", sep="_")] <- spectrum1$Samples
+  if ( file.exists(file) ) {
+    data <- read.table(file, header=T)
+    samples <- dim(data)[1]
+    
+    if ("Blink" %in% names(data)) {
+      blink <- data$Blink
+      blink_onsets <- blink[2 : samples] - blink[1 : (samples - 1)]
+    } else {
+      blink <- rep(0, samples)
+    }
+    x <- data$GyroX[1 : samples]
+    y <- data$GyroY[1 : samples]
+    
+    textdata <- NULL     # Spectral text data
+    exclude_channels <- NULL  #List of excluded channels
+    chan_samples <- NULL # List of samples per channel
+    
+    for (ch in channels) {
+      ts <- data[[ch]]
+      ts <- ts[1 : samples]
+      qty <- data[[paste(ch, "Q", sep="_")]]
+      qty <- qty[1 : samples]
+      spectrum <- spectral.analysis(ts, sampling, length=window, sliding=0.75, hamming=T,
+                                    x=x, y=y, blink=blink, quality=qty)
+      
+      allspectra[[ch]] <- spectrum
+      
+      if (is.null(textdata)) {
+        textdata <- data.frame("Subject" = subject, 
+                               "Freq" = spectrum$Freq, 
+                               as.numeric(spectrum$Spectrum))
+      } else {
+        textdata <- cbind(textdata, 
+                          as.numeric(spectrum$Spectrum))
+        
+      }
+      
+      #Exclude channel from whole-head analyses if [min_samples] or fewer usable samples remain
+      if (spectrum$Samples <= min_samples) {
+        if (is.null(exclude_channels)) {
+          exclude_channels <- data.frame('Subject' = subject,
+                                         "Channel" = ch,
+                                         "Reason" = paste(min_samples, " samples or less"),
+                                         "ExcludeFrom" = "WholeHeadIAF, Network Power and Coherence")
+        } else {
+          exclude_channels <- rbind(exclude_channels, 
+                                    data.frame("Subject" = subject, 
+                                               "Channel" = ch,
+                                               "Reason" = paste(min_samples, " samples or less"),
+                                               "ExcludeFrom" = "WholeHeadIAF, Network Power and Coherence"))
+        }
+      }
+      
+      #Find IAF frequency and power if peak meets criteria
+      #If no peak detected, add to excluded channels
+      ch.iaf <- iaf(spectrum$Spectrum, spectrum$Freq)
+      if (is.null(ch.iaf$freq)) {
+        if (is.null(exclude_channels)) {
+          exclude_channels <- data.frame('Subject' = subject,
+                                         "Channel" = ch,
+                                         "Reason" = "NoPeak",
+                                         "ExcludeFrom" = "WholeHeadIAF")
+        } else {
+          exclude_channels <- rbind(exclude_channels, 
+                                    data.frame('Subject' = subject,
+                                               "Channel" = ch,
+                                               "Reason" = "NoPeak",
+                                               "ExcludeFrom" = "WholeHeadIAF"))
+        }
+      }
+      
+      pdf(file=paste(subject, "_", session, "_spectrum_", ch, ".pdf", sep=""), width=6, height=5.5)
+      plot.spectrum(spect = spectrum, band.info = band.info, window = window, name=paste(subject, session, sep="/"), channel=ch)
+      dev.off()
+      
+      if (is.null(chan_samples)) {
+        chan_samples <- data.frame("Subject"=subject, "Version" = version, "Session"=session, "Sampling"=sampling,
+                                   "Window"=window, "Sliding"=sliding, "Duration" = (samples / sampling),
+                                   "Channel" = ch, "Samples" = spectrum$Samples)
+      } else {
+        chan_samples <- rbind(chan_samples,
+                              data.frame("Subject"=subject, "Version" = version, "Session"=session, "Sampling"=sampling,
+                                         "Window"=window, "Sliding"=sliding, "Duration" = (samples / sampling),
+                                         "Channel" = ch, "Samples" = spectrum$Samples))
+      }
+    }
+    
+    #Using spectra data, find any channels with unusual activity (unusually high or low power compared to other channels) and exclude
+    colnames(textdata) <- c("Subject", "Freq", channels)
+    ave_chan_power <- colMeans(textdata[,c(3:ncol(textdata))])
+    badspectra <- ave_chan_power[ave_chan_power > (mean(ave_chan_power) + 3*sd(ave_chan_power)) | 
+                                   ave_chan_power < (mean(ave_chan_power) - 3*sd(ave_chan_power))]
+    if (length(badspectra) > 0) {
+      if (is.null(exclude_channels)) {
+        exclude_channels <- data.frame("Subject" = rep(subject, length(badspectra)),
+                                       "Channel" = names(badspectra),
+                                       "Reason" = rep("BadSpectrum", length(badspectra)),
+                                       "ExcludeFrom" = rep("WholeHeadIAF, Network Power and Coherence", length(badspectra)))
+      } else {
+        exclude_channels <- rbind(cbind(subject, names(badspectra), "BadSpectrum", "WholeHeadIAF, Network Power and Coherence"))
+      }
+    }
+    
+    data_quality <- merge(chan_samples, exclude_channels, by = c("Subject", "Channel"), all = TRUE)
 
-			result2[paste(ch, "IAF", sep="_")] <- iaf(spectrum2)
-			result2[paste(ch, "IAF", "Power", sep="_")] <- iaf.power(spectrum2)
-			result2[paste(ch, "Samples", sep="_")] <- spectrum2$Samples
-
-		
-			pdf(file=paste(subject1, "_", session1, "_", subject2, "_", session2, "_", ch, ".pdf", sep=""), width=6, height=4)
-			plot.2spectra(spectrum1, spectrum2, name=paste(subject1, "/", session1, " vs. ", subject2, "/", session2, ", ", ch, sep=""))
-			dev.off()
-		}
-	
-		write.table(as.data.frame(result1), file=paste(subject1, "_", session1, "_summary.txt", sep=""),
-		            quote=F, row.names=F, col.names=T, sep="\t")
-		            
-		write.table(as.data.frame(result2), file=paste(subject2, "_", session2, "_summary.txt", sep=""),
-		            quote=F, row.names=F, col.names=T, sep="\t")
-	            
-	} else {
-		print(paste("File", file, "does not exist"))
-	}
-}
-
-analyze.2logfiles <- function(subject1, subject2, session1, session2, sampling=128, window=2, sliding=0.75, duration=300) {	
-	channels <- c("AF3", "F7", "F3", "FC5", "T7", "P7", "O1", "O2", "P8", "T8", "FC6", "F4", "F8", "AF4")
-	
-	file1 <- paste(subject1, "_", session1, ".txt", sep="")
-	file2 <- paste(subject2, "_", session2, ".txt", sep="")
-	if ( file.exists(file1) & file.exists(file2) ) {
-		data1 <- read.table(file1, header=T)
-		data2 <- read.table(file2, header=T)
-		
-		result1 <- list("Subject"=subject1, "Session"=session1, "Sampling"=sampling,
-		               "Window"=window, "Sliding"=sliding, "Duration"=duration)
-		
-		result2 <- list("Subject"=subject2, "Session"=session2, "Sampling"=sampling,
-		               "Window"=window, "Sliding"=sliding, "Duration"=duration)
-		
-		if ("Blink" %in% names(data1)) {
-			blink1 <- data1$Blink[1:(sampling*duration)]
-			blink2 <- data2$Blink[1:(sampling*duration)]
-		} else {
-			blink1 <- rep(0, sampling*duration)
-			blink2 <- rep(0, sampling*duration)
-		}
-		
-		x1 <- data1$GyroX[1:(sampling*duration)]
-		y1 <- data1$GyroY[1:(sampling*duration)]
-		
-		x2 <- data2$GyroX[1:(sampling*duration)]
-		y2 <- data2$GyroY[1:(sampling*duration)]
-		
-		for (ch in channels) {
-			#print(ch)
-			ts1 <- data1[[ch]]
-			ts1 <- ts1[1:(sampling*duration)]
-			
-			ts2 <- data2[[ch]]
-			ts2 <- ts2[1:(sampling*duration)]
-			
-			spectrum1 <- spectral.analysis(ts1, sampling, length=window, sliding=0.75, hamming=T,
-										  x=x1, y=y1, blink=blink1)
-										  
-			spectrum2 <- spectral.analysis(ts2, sampling, length=window, sliding=0.75, hamming=T,
-										  x=x2, y=y2, blink=blink2)
-
-			for (j in 1:length(band.names)) {
-				result1[paste(ch, "_mean_", band.names[j], "_power", sep="")] <- mean.power(spectrum1, bands[j,])
-				result2[paste(ch, "_mean_", band.names[j], "_power", sep="")] <- mean.power(spectrum2, bands[j,])
-			}
-			result1[paste(ch, "IAF", sep="_")] <- iaf(spectrum1)
-			result1[paste(ch, "IAF", "Power", sep="_")] <- iaf.power(spectrum1)
-			result1[paste(ch, "Samples", sep="_")] <- spectrum1$Samples
-
-			result2[paste(ch, "IAF", sep="_")] <- iaf(spectrum2)
-			result2[paste(ch, "IAF", "Power", sep="_")] <- iaf.power(spectrum2)
-			result2[paste(ch, "Samples", sep="_")] <- spectrum2$Samples
-
-		
-			pdf(file=paste(subject1, "_", session1, "_", subject2, "_", session2, "_", ch, ".pdf", sep=""), width=6, height=4)
-			plot.2spectra(spectrum1, spectrum2, name=paste(subject1, "/", session1, " vs. ", subject2, "/", session2, ", ", ch, sep=""))
-			dev.off()
-		}
-	
-		write.table(as.data.frame(result1), file=paste(subject1, "_", session1, "_summary.txt", sep=""),
-		            quote=F, row.names=F, col.names=T, sep="\t")
-		            
-		write.table(as.data.frame(result2), file=paste(subject2, "_", session2, "_summary.txt", sep=""),
-		            quote=F, row.names=F, col.names=T, sep="\t")
-	            
-	} else {
-		print(paste("File", file, "does not exist"))
-	}
-}
-
-
+    write.table(data_quality, file=paste(subject, "_", session, "_samplesperchannel.txt", sep=""),
+                quote=F, row.names=F, col.names=T, sep="\t")
+    
+  } else {
+    print(paste("File", file, "does not exist"))
+  }
+}  
 
 analyze.folders <- function(session.prefix="pre", sampling=128, window=2) {
 	for (d in dir()[file.info(dir())$isdir] ) {
