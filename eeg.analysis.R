@@ -62,10 +62,10 @@ draw_bands <- function(band_method, wholeheadiaf = NULL) {
     if (is.null(wholeheadiaf)) wholeheadiaf <- 10
     delta <- c(0, wholeheadiaf*0.4)
     theta <- c(wholeheadiaf*0.4, wholeheadiaf*0.8)
-    alpha <- c(wholeheadiaf*0.8, wholeheadiaf*1.2)
-    low_beta <- c(wholeheadiaf*1.25, wholeheadiaf*1.8)
-    high_beta <- c(wholeheadiaf*1.85, wholeheadiaf*3)
-    gamma <- c(wholeheadiaf*3.05, 40)
+    alpha <- c(wholeheadiaf*0.8, wholeheadiaf*1.21)
+    low_beta <- c(wholeheadiaf*1.21, wholeheadiaf*1.8)
+    high_beta <- c(wholeheadiaf*1.8, wholeheadiaf*3)
+    gamma <- c(wholeheadiaf*3, 40)
     band.names <- c("Delta", "Theta", "Alpha", "Low_Beta", "High_Beta", "Gamma")
     bands <- rbind(delta, theta, alpha, low_beta, high_beta, gamma)
     list(band.names = band.names, bands = bands)
@@ -74,19 +74,19 @@ draw_bands <- function(band_method, wholeheadiaf = NULL) {
     delta <- c(0, wholeheadiaf-6)
     theta <- c(wholeheadiaf-6, wholeheadiaf-2)
     alpha <- c(wholeheadiaf-2, wholeheadiaf+2.5)
-    low_beta <- c(wholeheadiaf+2.5, wholeheadiaf+8.5)
-    high_beta <- c(wholeheadiaf+8.5, wholeheadiaf+20.5)
-    gamma <- c(wholeheadiaf+20.5, 40)
+    low_beta <- c(wholeheadiaf+2.5, wholeheadiaf+8)
+    high_beta <- c(wholeheadiaf+8, wholeheadiaf+20)
+    gamma <- c(wholeheadiaf+20, 40)
     band.names <- c("Delta", "Theta", "Alpha", "Low_Beta", "High_Beta", "Gamma")
     bands <- rbind(delta, theta, alpha, low_beta, high_beta, gamma)
     list(band.names = band.names, bands = bands)
   } else {
     delta <- c(0, 4)
-    theta <- c(4.5, 7.5)
-    alpha <- c(8, 12)
+    theta <- c(4, 8)
+    alpha <- c(8, 12.5)
     low_beta <- c(12.5, 18)
-    high_beta <- c(18.5, 30)
-    gamma <- c(30.5, 40)
+    high_beta <- c(18, 30)
+    gamma <- c(30, 40)
     band.names <- c("Delta", "Theta", "Alpha", "Low_Beta", "High_Beta", "Gamma")
     bands <- rbind(delta, theta, alpha, low_beta, high_beta, gamma)
     list(band.names = band.names, bands = bands)
@@ -418,7 +418,7 @@ mean.coherence <- function(cohr, freq, band) {
   mean(cohr[freq >= band[1] & freq < band[2]])
 }
 
-analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.75, band_method="FBFW", coherence.plots = FALSE) {	
+analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.75, band_method="FBFW", coherence.plots = FALSE, min_samples_for_inclusion = 75) {	
 	channels <- c("AF3", "F7", "F3", "FC5", 
 	              "T7", "P7", "O1", "O2", 
 	              "P8", "T8", "FC6", "F4", 
@@ -440,7 +440,8 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 		data <- read.table(file, header=T)
 	  samples <- dim(data)[1]
 		result <- data.frame("Subject"=subject, "Version" = version, "Session"=session, "Sampling"=sampling,
-		               "Window"=window, "Sliding"=sliding, "Duration" = (samples / sampling), "Blinks" = "NA", "BandMethod" = band_method)
+		               "Window"=window, "Sliding"=sliding, "Duration" = (samples / sampling),
+		               "BandMethod" = band_method, "WholeHeadIAF" = "NA")
 		
 		
 		if ("Blink" %in% names(data)) {
@@ -477,18 +478,18 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 			  
 			}
 			
-			#Exclude channel from whole-head analyses if 75 or fewer usable samples remain
-			if (spectrum$Samples <= 75) {
+			#Exclude channel from whole-head analyses if "min_samples_for_inclusion" or fewer usable samples remain
+			if (spectrum$Samples <= min_samples_for_inclusion) {
 			  if (is.null(exclude_channels)) {
 			    exclude_channels <- data.frame('Subject' = subject,
 			                                   "Channel" = ch,
-			                                   "Reason" = "75 samples or less",
+			                                   "Reason" = paste(min_samples_for_inclusion, " samples or less"),
 			                                   "ExcludedFrom" = "WholeHeadIAF, Network Power and Coherence")
 			  } else {
 			    exclude_channels <- rbind(exclude_channels, 
 			                              data.frame("Subject" = subject, 
 			                                         "Channel" = ch,
-			                                         "Reason" = "75 samples or less",
+			                                         "Reason" = paste(min_samples_for_inclusion, " samples or less"),
 			                                         "ExcludedFrom" = "WholeHeadIAF, Network Power and Coherence"))
 			  }
 			}
@@ -520,7 +521,7 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 		
 		#Using spectra data, find any channels with unusual activity (unusually high or low power compared to other channels) and exclude
 		colnames(textdata) <- c("Subject", "Freq", channels)
-		ave_chan_power <- colMeans(textdata[,c(3:ncol(textdata))])
+		ave_chan_power <- colMeans(textdata[textdata$Freq < 40.5,c(3:ncol(textdata))])
 		badspectra <- ave_chan_power[ave_chan_power > (mean(ave_chan_power) + 3*sd(ave_chan_power)) | 
 		                               ave_chan_power < (mean(ave_chan_power) - 3*sd(ave_chan_power))]
 		if (length(badspectra) > 0) {
@@ -543,6 +544,7 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 		
 		dataforiaf$WholeHeadSpectrum <- rowMeans(dataforiaf[3:ncol(dataforiaf)])
 		wholeheadiaf <- iaf(dataforiaf$WholeHeadSpectrum, dataforiaf$Freq)$freq
+		result[["WholeHeadIAF"]] <- wholeheadiaf
 		
 		#For anybody missing peaks in BOTH O1 AND O2, skip wholeheadIAF calculation and default to traditional FBFW
 		if ("O1" %in% names(dataforiaf) | "O2" %in% names(dataforiaf)) {
@@ -706,7 +708,7 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 	}
 }
 
-datacheck <- function(subject, session, sampling=128, window=2, sliding=0.75, min_samples = 75) {
+datacheck <- function(subject, session, sampling=128, window=2, sliding=0.75, min_samples_for_inclusion = 75) {
   channels <- c("AF3", "F7", "F3", "FC5", 
                 "T7", "P7", "O1", "O2", 
                 "P8", "T8", "FC6", "F4", 
@@ -754,18 +756,18 @@ datacheck <- function(subject, session, sampling=128, window=2, sliding=0.75, mi
         
       }
       
-      #Exclude channel from whole-head analyses if [min_samples] or fewer usable samples remain
-      if (spectrum$Samples <= min_samples) {
+      #Exclude channel from whole-head analyses if [min_samples_for_inclusion] or fewer usable samples remain
+      if (spectrum$Samples <= min_samples_for_inclusion) {
         if (is.null(exclude_channels)) {
           exclude_channels <- data.frame('Subject' = subject,
                                          "Channel" = ch,
-                                         "Reason" = paste(min_samples, " samples or less"),
+                                         "Reason" = paste(min_samples_for_inclusion, " samples or less"),
                                          "ExcludeFrom" = "WholeHeadIAF, Network Power and Coherence")
         } else {
           exclude_channels <- rbind(exclude_channels, 
                                     data.frame("Subject" = subject, 
                                                "Channel" = ch,
-                                               "Reason" = paste(min_samples, " samples or less"),
+                                               "Reason" = paste(min_samples_for_inclusion, " samples or less"),
                                                "ExcludeFrom" = "WholeHeadIAF, Network Power and Coherence"))
         }
       }
