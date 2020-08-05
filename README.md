@@ -6,9 +6,12 @@ for QEEG analysis.
 
 ## How to Use The `eeg.analysis.R` Script
 
-The analysis is straighforward; you only need to load the script into
-R (version >3.1). You can then call the `analyze.logfile` function,
-passing the following arguments:
+The analysis is straightforward; you only need to load the script into
+R (version >3.1). You can then call the `analyze.logfile` function to run a full analysis of the data for one subject, the `analyze.folder` function to run the `analyze.logfile` function on many subjects at a time and concatenate their output, or you can run the `datacheck` function immediately after collecting data to determine its usability. 
+
+###`analyze.logfile`
+
+To use this analysis, passing the following arguments:
 
 1. `subject` and `session` names. They will be combined into a single
 filename; for example, subject "Andy" in session "rest" would be
@@ -24,10 +27,27 @@ overlap with the previous segment. In other words, the proportion of
 overlap between adjacent segments is (1 - _sliding_). It needs to be a
 number between 0 and 1 (__not__ a percentage!) and defaults to 0.75.
 
+5. `band_method` This is the method used to define the frequency bands. For all frequency bands, values lying on the lower bound are included in the frequency band but values lying on the upper bound go to the subsequent band. There are 3 options, as described in Doppelmayr, Klimesch, Pachinger, & Ripper (1998): 
+
+The default is “FBFW” (fixed bands, fixed width), in which delta < 4 Hz, theta is between 4-8 Hz, alpha is between 8-12.5 Hz, low beta is between 12.5-18 Hz, high beta is from 18-30 Hz, and gamma is 30-40 Hz.
+
+The other two methods calculate individualized bands based on the whole-head Individualized Alpha Frequency (IAF) as the center of the alpha band, and the other frequency bands are defined with respect to the IAF. Calculation of the IAF involves creating a single frequency spectrum using all the ‘good’ spectra (see excluded channels info), and running a peak detection algorithm on the whole head spectrum.
+
+
+“IBFW” (individualized bands, fixed width): with respect to the identified whole-head IAF, delta is defined as all frequencies below IAF – 6 Hz, theta from IAF – 6 Hz to IAF – 2 Hz, alpha from IAF – 2 Hz to IAF + 2.5 Hz, low beta from IAF + 2.5 Hz to IAF + 8 Hz, high beta from IAF + 8 Hz to IAF + 20 Hz, and gamma as anything between IAF + 20 Hz and 40 Hz (absolute, not with respect to the IAF).
+
+“IBIW” (individualized bands, individualized width): with respect to the whole-head IAF, delta is defined as frequencies between 0 and IAF*0.4, theta from IAF*0.4 to IAF*0.8, alpha from IAF*0.8 to IAF*1.21, low beta from IAF*1.21 to IAF*1.8, high beta from IAF*1.8 to IAF*3, and gamma as anything between IAF*3 and 40 Hz.
+
+*Note: if a subject does not have a detectable peak in both electrodes O1 and O2, the whole-head IAF will not be calculated and their data will be treated as though their peak is at 10 Hz, therefore providing the band estimates for the FBFW method.
+
+6. `coherence.plots` This is a Boolean argument defaulted to FALSE. If TRUE, the script will output a spectral coherence plot for every channel pairing in the same format as the spectra plots.
+
+7. `min_samples_for_inclusion` This is the minimum number of good samples (epochs with defined window size) that must be used in the estimate of a given channel’s spectral power to be included in the subsequent calculation of the whole-head IAF, and the spectral power and coherence for an electrode region.
+
 The script will automatically run all the analysis (see below) and
 call the ancillary functions defined in the script.
 
-## Analysis Overview
+#### Analysis Overview
 
 The analysis of QEEG data is made of several steps:
 
@@ -38,9 +58,7 @@ low-quality headsets) are removed through linear regression.
 present) is also removed through linear regression.
 
 3. Then, the time series is divided into 2-second segment with 25%
-overlap. Note that using 2-second epochs for analysis limites the
-lower bound for frequency (and, therefore, the resolution of the
-spectrogram) to 0.5 Hz. 
+Overlap (default sliding = 0.75). Note that using 2-second epochs (default window = 2) for analysis limits the lower bound for frequency (and, therefore, the resolution of the spectrogram) to 0.5 Hz. 
 
 4. Each segment is considered individually in terms of data
 quality. Segments were eye blinks or other signal artifacts (e.g., >
@@ -57,8 +75,37 @@ averaged together to yield a "mean" spectrogram.
 7. The mean spectrogram is then log-transformed to represent power in
 decibels. 
 
-8. As a final step, the alpha peak is identified as the highest value
-in the alpha band (8-13 Hz) that is surrounde by two lower values.
+8. The channel-level alpha peak is identified as the highest value in a liberal alpha range (7-15 Hz) that is surrounded by two lower values.
+
+9. Electrode region analyses are conducted based on user-defined electrode networks (lines 427-432). A spectrogram for each region is created and appended to the spectra file by averaging the spectra for all ‘good’ channels within that region. The mean power in each of the frequency bands is calculated and appended to the summary file.
+
+10. Coherence is calculated for every channel pairing following the same cleaning procedures for each time series in the pairing (see steps 1-5). Coherence is also calculated between and within each electrode region by averaging the coherence for channel pairings within or between regions in each frequency band.
+
+###`analyze.folder`
+
+###`datacheck`
+
+Immediately after collecting data, it is important to verify data quality and usability. This function will conduct a simplified version of the analyze.logfile function. Assume all arguments and defaults are the same unless indicated.
+
+Arguments:
+`subject`
+`session`
+
+`sampling`
+`window`
+`sliding`
+
+`min_samples_to_include`
+
+Process:
+
+1. For every channel, calculate the number of usable samples that would survive inclusion in the FFT analysis. 
+
+2. Check every channel for a detectable peak.
+
+3. Output spectrogram (PDF) of every channel’s FFT, including data quality and blink information across the bottom.
+
+4. Output `<subject>_<session>_samplesperchannel.txt` file with one row for every channel indicating the number of usable samples, and for each channel, whether it would be included for any reason in the `excludedchannels` output file (BadSpectrum, NoPeak, N samples or less; note, Missing O1 and O2 can be determined by looking for “NoPeak” on electrodes O1 and O2). 
 
 ## EEG Data File format
 
@@ -68,6 +115,14 @@ way, with each sample in a row, and each channel in a column. The
 script assume that column have names (for example, `AF3`) that correspond
 to individual channels. See below for ways to convert other data types
 into this format.
+
+###Blink column
+
+Emotiv includes automatic blink detection that is outputted as a column of 1s (actively blinking) and 0s (eyes open). This is used to exclude any epochs that have blinks detected.
+
+If using this script to process data from a non-Emotiv source that does not include a blink column, the script will create a blink column full of 0s (no blinks). However, artifact detection is an important pre-processing step. Users of other EEG systems may conduct independent moving-window artifact rejection algorithms and map those artifact periods onto the timeseries data into a `blink` column, which will then be excluded in the FFT calculations. 
+
+*Please note: the FFT depends on having contiguous data. Identifying and removing epochs that contain artifacts will produce unreliable FFT estimates due to sharp edges and jumps present in the time series resulting from epoch removal. It is important to keep the entire time series in the logfile, and indicate with the blink column which epochs contain artifact and should therefore be excluded. 
 
 ### Quality data
 
@@ -90,9 +145,8 @@ series and flagging artifacts).
 ### Counters, Blinks, and Motion
 
 In addition to standard channels, the script handles count data
-(`Counter`), gyro motion data (`GyroX`, `GyroY`, and `GyroZ`), and
-blink column artifacts (`Blink`, expected to be 0 for normal and > 0
-for any measure of blink artifact).
+(`Counter`) and gyro motion data (`GyroX`, `GyroY`, and `GyroZ). The default behavior of the script for a file missing these columns is to simply not consider them, and will not significantly impact the product.
+.
 
 ### Example
 
@@ -106,21 +160,31 @@ Here is an example of the data format (from Emotiv):
 
 ## Data Output
 
-The script will output a three _text_ files and a variable number of
+The script will output a four _text_ files and a variable number of
 _pdf_ files. The text files will be:
 
 1. The `<subject>_<session>_summary.txt` file. This a 2-line file that
-contains a summary of the frequency powers across all channels, plus a
-number of other informative data (e.g., frequency and power of the
-individual alpha peak at each channel) and meta-data (script version,
-number of epochs analyzed). 
+contains a summary of the frequency powers across all channels and electrode regions, average coherence between all channel and electrode region pairings, plus a number of other informative data (e.g., frequency and power of the individual alpha peak at each channel, number of samples used in calculation of channel power) and meta-data(script version, sampling rate, window size, recording duration, band method, whole head IAF, and min number of samples to be included in power and coherence calculations). 
 
 2. The `<subject>_<session>_spectra.txt` file. This is a text file
 with (_N_ + 1) rows and 40/_H_ columns, where _N_ is the number of
 channels in the log file and _H_ is the minimum resolution (in Hz) of
-the script (which is defined by the value of the _window_ parameter).
+the script (which is defined by the value of the _window_ parameter). If using the default values in the script, the frequency resolution is 0.5 Hz, and therefore there is one column in this output for each 0.5 Hz frequency step.
 
-3. The `<subject>_<session>_coherence.txt` file.
+3. The `<subject>_<session>_coherence.txt` file. Like the `_spectra.txt` file, this is a text file with one row for each “Connection” (every channel pairing, every electrode region pairing) indicating the coherence at every frequency step. 
+
+4. `subject`_`session`_excludedchannels.txt: one row per channel excluded from any part of the analysis, the reason for exclusion (“N samples or less”, “NoPeak”, “BadSpectrum”, “Missing O1 AND O2”), and what part(s) of the analysis it from which it was excluded (“WholeHeadIAF”, “Network Power and Coherence”, “Individualized Bands”). 
+
+Exclusions:
+N samples or less: as defined in the argument `min_samples_for_inclusion`, any channel whose spectral power calculations were based on N-defined samples or less will be excluded from the calculation of the WholeHeadIAF and Network Power and Coherence. The default values (75 samples of window size 2) require 2.5 minutes of artifact-free data to be included in a channel’s power calculation to be included. 
+
+“NoPeak”: channels that do not have peaks in the alpha range that meet the peak detection criteria will be labeled as having “NoPeak” and will be excluded from the calculation of the WholeHeadIAF. This is to increase the signal present in the WholeHeadIAF calculation to only include channels that have a clearly-defined peak.
+
+“BadSpectrum”: for each subject, the average spectral power for each channel between 0-40 Hz is calculated. Any channel whose average power is more than 3 SD above or below the all-channel average will be excluded for having bad data from the calculation of the WholeHeadIAF and Network Power and Coherence.
+
+“Missing O1 AND O2”: any subject for whom a reliable peak was not detected in both electrodes O1 and O2 will be excluded from any individualized methods of calculating frequency bands. Posterior electrodes (O1, Oz, O2) are those in which alpha peaks are most readily detected; therefore, a subject who has no peak in those electrodes (Emotiv does not have Oz, therefore only O1 and O2 are included) will be deemed as having an unreliable peak, and will have fixed bands and fixed widths applied.  
+
+
 
 In addition to the text files, the script will also output the
 following _pdf_ files:
@@ -129,9 +193,9 @@ following _pdf_ files:
 is the number of channels. Each file will plot the spectrogram
 (between 0 and 40 Hz) with different colors indicating the different
 frequency bands, and a _quality bar_, indicating the quality of the
-recording over time with dark marks indicating blinks.
+recording over time with dark marks indicating blinks. A red-filled diamond indicates the channel’s IAF, and an unfilled blue diamond indicates the subject’s WholeHeadIAF.
 
-1. _N_ * (_N_ - 1) / 2
+2. If coherence.plots = TRUE: _N_ * (_N_ - 1) / 2
 `<subject>_<session>_<coherence>_<channel1>_<channel2>.pdf` files,
 where _N_ is the number of channels. Each file will plot the
 coherence between the two channels between 0 and 40 Hz, with different
@@ -142,7 +206,7 @@ marks indicating blinks.
 Here is an example of a spectrum plot generated from the script from
 the channel O2. The plot showcases the result of processing a dataset
 affected by poor recording quality (note the quality bar going from
-gree to yellow to orange) and many discarded segments (only 36 samples
+green to yellow to orange) and many discarded segments (only 36 samples
 remained after the automated quality checks; note the large number of
 blinks on the quality bar).   
 
@@ -151,9 +215,11 @@ blinks on the quality bar).
 
 # Using the script with Other formats
 
-The script assumes that the data is organized as descrbed above.
+The script assumes that the data is organized as described above.
 Other EEG data formats of data will need to be converted to the format
 specified above to work with our QEEG script.  This is usually fairly easy to do, since most EEG data formats are tabular, and assume channel data will be organized in some Time-by-Channel format. Thus, conversion is usually a matter of manipulating large data matrices (or, in certain cases, rotating them).
+
+As noted in the Blink section, the treatment of artifact detection and removal will be an important step in figuring out how to use this script with other formats. 
 
 As an example, I have provided here a shell script that converts the native OpenBCI format to our R-friendly format, together with a version of our script (`eeg.analysis.obci.new.r`) that has already been parametrized for OpenBCI Cyton boards.  The script is named  . The script simply reads the OpenBCI data file, and reformats it in our native format. Because OpenBCI headsets can use any arbitrary montage, the name of the channels needs to be supplied; the script will assume that the correct description can be found in the `header.txt` file.  
 
