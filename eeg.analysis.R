@@ -50,10 +50,7 @@ version = "4.1"
 
 library(e1071)
 library(pracma)
-library(plyr)
-library(reshape)
-library(reshape2)
-library(Rmisc)
+library(filesstrings)
 
 
 #Function to define the frequency bands according to the "band_method" argument
@@ -418,7 +415,8 @@ mean.coherence <- function(cohr, freq, band) {
   mean(cohr[freq >= band[1] & freq < band[2]])
 }
 
-analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.75, band_method="FBFW", coherence.plots = FALSE, min_samples_for_inclusion = 75) {	
+analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.75, 
+                            band_method="FBFW", coherence.plots = FALSE, min_samples_for_inclusion = 75, return_object = FALSE) {	
 	channels <- c("AF3", "F7", "F3", "FC5", 
 	              "T7", "P7", "O1", "O2", 
 	              "P8", "T8", "FC6", "F4", 
@@ -455,7 +453,6 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 		y <- data$GyroY[1 : samples]
 		
 		textdata <- NULL     # Spectral text data
-		c_textdata <- NULL   # Coherence text data
 		exclude_channels <- NULL  #List of excluded channels
 		
 		for (ch in channels) {
@@ -482,12 +479,14 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 			if (spectrum$Samples <= min_samples_for_inclusion) {
 			  if (is.null(exclude_channels)) {
 			    exclude_channels <- data.frame('Subject' = subject,
+			                                   "Session" = session,
 			                                   "Channel" = ch,
 			                                   "Reason" = paste(min_samples_for_inclusion, " samples or less"),
 			                                   "ExcludedFrom" = "WholeHeadIAF, Network Power and Coherence")
 			  } else {
 			    exclude_channels <- rbind(exclude_channels, 
 			                              data.frame("Subject" = subject, 
+			                                         "Session" = session,
 			                                         "Channel" = ch,
 			                                         "Reason" = paste(min_samples_for_inclusion, " samples or less"),
 			                                         "ExcludedFrom" = "WholeHeadIAF, Network Power and Coherence"))
@@ -500,12 +499,14 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 			if (is.null(ch.iaf$freq)) {
 			  if (is.null(exclude_channels)) {
 			    exclude_channels <- data.frame('Subject' = subject,
+			                                   "Session" = session,
 			                                   "Channel" = ch,
 			                                   "Reason" = "NoPeak",
 			                                   "ExcludedFrom" = "WholeHeadIAF")
 			  } else {
 			    exclude_channels <- rbind(exclude_channels, 
 			                              data.frame('Subject' = subject,
+			                                         "Session" = session,
 			                                         "Channel" = ch,
 			                                         "Reason" = "NoPeak",
 			                                         "ExcludedFrom" = "WholeHeadIAF"))
@@ -527,6 +528,7 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 		if (length(badspectra) > 0) {
 		  if (is.null(exclude_channels)) {
 		    exclude_channels <- data.frame("Subject" = rep(subject, length(badspectra)),
+		                                   "Session" = rep(session, length(badspectra)),
 		                                   "Channel" = names(badspectra),
 		                                   "Reason" = rep("BadSpectrum", length(badspectra)),
 		                                   "ExcludedFrom" = rep("WholeHeadIAF, Network Power and Coherence", length(badspectra)))
@@ -553,12 +555,14 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 		  band.info <- draw_bands(band_method = "FBFW")
 		  if (is.null(exclude_channels)) {
 		    exclude_channels <- data.frame("Subject" = subject,
+		                                   "Session" = session,
 		                                   "Channel" = "All",
 		                                   "Reason" = "Missing O1 AND O2",
 		                                   "ExcludedFrom" = "Individualized Bands")
 		  } else {
 		    exclude_channels <- rbind(exclude_channels,
 		                              data.frame("Subject" = subject,
+		                                         "Session" = session,
 		                                         "Channel" = "All",
 		                                         "Reason" = "Missing O1 AND O2",
 		                                         "ExcludedFrom" = "Individualized Bands"))
@@ -604,6 +608,7 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 		
 		## Coherence analysis:
 		print("Running Coherence Analysis")
+		c_textdata <- NULL   # Coherence text data
 		chan_connections <- c()
 		net_connections <- c()
 		for (i in  1 : (length(channels) - 1)) {
@@ -611,18 +616,19 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 		    ch1 <- channels[i]
 		    ch2 <- channels[j]
 		    
+		    con <- paste(sort(c(ch1, ch2))[1], sort(c(ch1, ch2))[2], sep = "_")
+		    chan_connections <- c(chan_connections, con)
+		    
+		    net1 <- names(networks[grep(ch1, networks)])
+		    net2 <- names(networks[grep(ch2, networks)])
+		    
+		    netcon <- paste(sort(c(net1, net2))[1], sort(c(net1, net2))[2], sep = "_")
+		    net_connections <- c(net_connections, netcon)
+		    
 		    if (!(ch1 %in% exclude_channels$Channel[grep("Network Power and Coherence", 
 		                                               exclude_channels$ExcludedFrom)]) &
 		        !(ch2 %in% exclude_channels$Channel[grep("Network Power and Coherence", 
 		                                                 exclude_channels$ExcludedFrom)])) {
-		      con <- paste(sort(c(ch1, ch2))[1], sort(c(ch1, ch2))[2], sep = "_")
-		      chan_connections <- c(chan_connections, con)
-		      
-		      net1 <- names(networks[grep(ch1, networks)])
-		      net2 <- names(networks[grep(ch2, networks)])
-		      
-		      netcon <- paste(sort(c(net1, net2))[1], sort(c(net1, net2))[2], sep = "_")
-		      net_connections <- c(net_connections, netcon)
 		      
 		      ts1 <- data[[ch1]]
 		      ts2 <- data[[ch2]]
@@ -664,6 +670,16 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 		      for (j in 1:length(band.info$band.names)) {
 		        result[paste(con, "_mean_", band.info$band.names[j], "_coherence", sep="")] <- "NA"
 		      }
+		      
+		      if (is.null(c_textdata)) {
+		        resolution <- 1/window
+		        c_textdata <- data.frame("Subject" = subject,
+		                                 "Freq" = seq(from = resolution, to = sampling/2, by = resolution),
+		                                 "Coh" = rep(NA, length(seq(from = resolution, to = sampling/2, by = resolution))))
+		      } else {
+		        c_textdata <- cbind(c_textdata, 
+		                            data.frame("Coh" = NA))
+		      }
 		    }
 		  } 
 		} #End channel cycling here
@@ -672,18 +688,32 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 		
 		net_c_textdata <- NULL
 		for (netcon in sort(unique(net_connections))) {
-		  if (is.null(net_c_textdata)) {
-		    net_c_textdata <- data.frame("Coh" = rowMeans(c_textdata[net_connections == netcon]))
-		  } else{
-		    net_c_textdata <- cbind(net_c_textdata, 
-		                            data.frame("Coh" = rowMeans(c_textdata[net_connections == netcon])))
+		  if (length(net_connections[net_connections == netcon]) > 1) {
+		    if (is.null(net_c_textdata)) {
+		      net_c_textdata <- data.frame("Coh" = rowMeans(c_textdata[,grep(netcon, net_connections) + 2], na.rm = TRUE))
+		    } else{
+		      net_c_textdata <- cbind(net_c_textdata, 
+		                              data.frame("Coh" = rowMeans(c_textdata[,grep(netcon, net_connections) + 2], na.rm = TRUE)))
+		    }
+		    
+		    for (j in 1:length(band.info$band.names)) {
+		      result[paste(netcon, "_mean_", band.info$band.names[j], "_coherence", sep="")] <- mean.coherence(cohr = rowMeans(c_textdata[,grep(netcon, net_connections) + 2]),
+		                                                                                                       freq = c_textdata$Freq, band.info$bands[j,])
+		    }
+		  } else {
+		    if (is.null(net_c_textdata)) {
+		      net_c_textdata <- data.frame("Coh" = c_textdata[,grep(netcon, net_connections) + 2])
+		    } else {
+		      net_c_textdata <- cbind(net_c_textdata,
+		                              data.frame("Coh" = c_textdata[,grep(netcon, net_connections) + 2]))
+		    }
+		    
+		    for (j in 1:length(band.info$band.names)) {
+		      result[paste(netcon, "_mean_", band.info$band.names[j], "_coherence", sep="")] <- mean.coherence(cohr = c_textdata[,grep(netcon, net_connections) + 2],
+		                                                                                                       freq = c_textdata$Freq, band.info$bands[j,])
+		        }
+		      }
 		  }
-		  
-		  for (j in 1:length(band.info$band.names)) {
-		    result[paste(netcon, "_mean_", band.info$band.names[j], "_coherence", sep="")] <- mean.coherence(cohr = rowMeans(c_textdata[net_connections == netcon]),
-		                                                                                           freq = c_textdata$Freq, band.info$bands[j,])
-		  }
-		}
 		
 		colnames(net_c_textdata) <- sort(unique(net_connections))
 		c_textdata <- cbind(c_textdata, net_c_textdata)
@@ -702,7 +732,10 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 		
 		write.table(exclude_channels, file = paste(subject, "_", session, "_excludedchannels.txt", sep = ""),
 		            quote = F, row.names = F, col.names = T, sep = "\t")
-		          
+		
+		if (return_object == TRUE) {
+		  return(list(spectra = textwide, coh = c_textwide, summary = result, exclude = exclude_channels))
+		}
 	} else {
 		print(paste("File", file, "does not exist"))
 	}
@@ -760,12 +793,14 @@ datacheck <- function(subject, session, sampling=128, window=2, sliding=0.75, mi
       if (spectrum$Samples <= min_samples_for_inclusion) {
         if (is.null(exclude_channels)) {
           exclude_channels <- data.frame('Subject' = subject,
+                                         "Session" = session, 
                                          "Channel" = ch,
                                          "Reason" = paste(min_samples_for_inclusion, " samples or less"),
                                          "ExcludeFrom" = "WholeHeadIAF, Network Power and Coherence")
         } else {
           exclude_channels <- rbind(exclude_channels, 
-                                    data.frame("Subject" = subject, 
+                                    data.frame("Subject" = subject,
+                                               "Session" = session,
                                                "Channel" = ch,
                                                "Reason" = paste(min_samples_for_inclusion, " samples or less"),
                                                "ExcludeFrom" = "WholeHeadIAF, Network Power and Coherence"))
@@ -778,12 +813,14 @@ datacheck <- function(subject, session, sampling=128, window=2, sliding=0.75, mi
       if (is.null(ch.iaf$freq)) {
         if (is.null(exclude_channels)) {
           exclude_channels <- data.frame('Subject' = subject,
+                                         "Session" = session,
                                          "Channel" = ch,
                                          "Reason" = "NoPeak",
                                          "ExcludeFrom" = "WholeHeadIAF")
         } else {
           exclude_channels <- rbind(exclude_channels, 
                                     data.frame('Subject' = subject,
+                                               "Session" = session,
                                                "Channel" = ch,
                                                "Reason" = "NoPeak",
                                                "ExcludeFrom" = "WholeHeadIAF"))
@@ -814,15 +851,16 @@ datacheck <- function(subject, session, sampling=128, window=2, sliding=0.75, mi
     if (length(badspectra) > 0) {
       if (is.null(exclude_channels)) {
         exclude_channels <- data.frame("Subject" = rep(subject, length(badspectra)),
+                                       "Session" = rep(session, length(badspectra)),
                                        "Channel" = names(badspectra),
                                        "Reason" = rep("BadSpectrum", length(badspectra)),
                                        "ExcludeFrom" = rep("WholeHeadIAF, Network Power and Coherence", length(badspectra)))
       } else {
-        exclude_channels <- rbind(cbind(subject, names(badspectra), "BadSpectrum", "WholeHeadIAF, Network Power and Coherence"))
+        exclude_channels <- rbind(cbind(subject, session, names(badspectra), "BadSpectrum", "WholeHeadIAF, Network Power and Coherence"))
       }
     }
     
-    data_quality <- merge(chan_samples, exclude_channels, by = c("Subject", "Channel"), all = TRUE)
+    data_quality <- merge(chan_samples, exclude_channels, by = c("Subject", "Session", "Channel"), all = TRUE)
 
     write.table(data_quality, file=paste(subject, "_", session, "_samplesperchannel.txt", sep=""),
                 quote=F, row.names=F, col.names=T, sep="\t")
@@ -832,30 +870,76 @@ datacheck <- function(subject, session, sampling=128, window=2, sliding=0.75, mi
   }
 }  
 
-analyze.folders <- function(session.prefix="pre", sampling=128, window=2) {
-	for (d in dir()[file.info(dir())$isdir] ) {
+analyze.folder <- function(session ="pre", sampling=128, window=2, band_method = "FBFW", coherence.plots = FALSE, min_samples_for_inclusion = 75) {
+	if (!dir.exists("Summary Files")) {
+	  dir.create("Summary Files")
+	}
+	
+	if (!dir.exists("Spectra Files")) {
+	  dir.create("Spectra Files")
+	}
+	
+	if (!dir.exists("Coherence Files")) {
+	  dir.create("Coherence Files")
+	}
+	
+	if (!dir.exists("PDF Spectra")) {
+	  dir.create("PDF Spectra")
+	}
+	
+	if (!dir.exists("Excluded Data")){
+	  dir.create("Excluded Data")
+	}
+  
+  if (!dir.exists("Analyzed")) {
+    dir.create("Analyzed")
+  }
+  concat_summary <- data.frame()
+  concat_spectra <- data.frame()
+  concat_coh <- data.frame()
+  concat_exclude <- data.frame()
+  sublist <- c()
+  for (d in dir()[grep(paste0(session, ".txt"), dir())]) {
 		#filepath <- dir(d, full.names=T)[length(dir(d))]
 		#filename <- dir(d, full.names=F)[length(dir(d))]
-		#subject <- strsplit(filename, "_")[1]
+		subject <- sapply(strsplit(as.character(d),"_"), `[`, 1)
+		sublist <- c(sublist, subject)
 		#ext <- strsplit(filename, "_")[2]
 		#session <- strsplit(ext, ".t")[1]
 		
-		session <- paste(session.prefix, length(dir(d, full.names=T)[grep(session.prefix, dir(d, full.names=T))]), sep="")
-		file <- paste(d, "_", session, ".txt", sep="")	
-		print(c(d, session))
-		setwd(d)
-		if ( file.exists(file) ) {
-			data <- read.table(file, header=T, sep="\t")
-			num.samples <- dim(data)[1]
-			secs <- floor(num.samples / sampling)
-			#dur <- min(secs, 300)
-			print(paste("Duration", secs))
-			#best.duration <- (mins * 60 * sampling)
-			analyze.logfile(d, session, sampling = sampling, window = window)
-
+		#session <- paste(session, length(dir(d, full.names=T)[grep(session, dir(d, full.names=T))]), sep="")
+		#file <- paste(d, "_", session, ".txt", sep="")	
+		print(paste0("Processing file: ", subject, "_", session))
+		#setwd(d)
+		if ( file.exists(d) ) {
+			subdata <- analyze.logfile(subject, session, sampling = sampling, window = window, return_object = TRUE)
+			concat_summary <- rbind(concat_summary, subdata$summary)
+			concat_spectra <- rbind(concat_spectra, subdata$spectra)
+			concat_coh <- rbind(concat_coh, subdata$coh)
+			if (!is.null(subdata$exclude)){
+			  concat_exclude <- rbind(concat_exclude, subdata$exclude)
+			}
+			file.move(grep(paste0(subject, "_", session, "_summary"), dir(), value = TRUE), "Summary Files")
+			file.move(grep(paste0(subject, "_", session, "_spectra"), dir(), value = TRUE), "Spectra Files")
+			file.move(grep(paste0(subject, "_", session, "_spectrum"), dir(), value = TRUE), "PDF Spectra")
+			file.move(grep("_coherence.pdf", dir(), value = TRUE), "PDF Spectra")
+			file.move(grep(paste0(subject, "_", session, "_coherence"), dir(), value = TRUE), "Coherence Files")
+			file.move(grep(paste0(subject, "_", session, "_excludedchannels"), dir(), value = TRUE), "Excluded Data")
+			file.move(d, "Analyzed")
 		} else {
 			print(paste("File", file, "does not exist"))
 		}
-		setwd("..")
-	}
+  }
+  write.csv(concat_summary, 
+            file = paste0("Subjects ", sublist[1], " through ", sublist[length(sublist)], "_summary.csv"),
+            row.names = FALSE)
+  write.csv(concat_spectra, 
+            file = paste0("Subjects ", sublist[1], " through ", sublist[length(sublist)], "_spectra.csv"),
+            row.names = FALSE)
+  write.csv(concat_coh, 
+            file = paste0("Subjects ", sublist[1], " through ", sublist[length(sublist)], "_coherence.csv"),
+            row.names = FALSE)
+  write.csv(concat_exclude, 
+            file = paste0("Subjects ", sublist[1], " through ", sublist[length(sublist)], "_excludedchannels.csv"),
+            row.names = FALSE)
 }
