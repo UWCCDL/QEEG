@@ -912,7 +912,10 @@ analyze.folder <- function(session ="pre", sampling=128, window=2, band_method =
 		print(paste0("Processing file: ", subject, "_", session))
 		#setwd(d)
 		if ( file.exists(d) ) {
-			subdata <- analyze.logfile(subject, session, sampling = sampling, window = window, return_object = TRUE)
+			subdata <- analyze.logfile(subject, session, 
+			                           sampling = sampling, window = window, 
+			                           return_object = TRUE, 
+			                           band_method = band_method, coherence.plots = coherence.plots, min_samples_for_inclusion = min_samples_for_inclusion)
 			concat_summary <- rbind(concat_summary, subdata$summary)
 			concat_spectra <- rbind(concat_spectra, subdata$spectra)
 			concat_coh <- rbind(concat_coh, subdata$coh)
