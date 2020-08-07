@@ -44,6 +44,8 @@ The other two methods calculate individualized bands based on the whole-head Ind
 
 7. `min_samples_for_inclusion` This is the minimum number of good samples (epochs with defined window size) that must be used in the estimate of a given channel’s spectral power to be included in the subsequent calculation of the whole-head IAF, and the spectral power and coherence for an electrode region.
 
+8. `return_object` This is a Boolean argument defaulted to FALSE. If TRUE, the function will return a list of objects [spectra, coherence, summary, excluded] that are automatically outputted into .txt files. Used for concatenating multiple subjects’ data in the `analyze.folder` function.
+
 The script will automatically run all the analysis (see below) and
 call the ancillary functions defined in the script.
 
@@ -82,6 +84,34 @@ decibels.
 10. Coherence is calculated for every channel pairing following the same cleaning procedures for each time series in the pairing (see steps 1-5). Coherence is also calculated between and within each electrode region by averaging the coherence for channel pairings within or between regions in each frequency band.
 
 ###`analyze.folder`
+
+Able to perform the `analyze.logfile` function across many files at once. 
+
+1. Collect all raw EEG .txt files into one folder (directory). Ensure consistent file naming: `<subject>_<session>.txt`. Everything to the left of the first underscore will be considered the `subject` number. 
+
+2. Set the working directory to that folder.
+
+3. Run `analyze.folder`, passing the following arguments:
+`session`: everything to the right of the underscore
+Optional:
+`sampling` default to 128 Hz
+`window` defaults to 2 (sec)
+`band_method` defaults to “FBFW”
+`coherence.plots` defaults to FALSE
+`min_samples_for_inclusion` defaults to 75
+
+The function performs the following actions:
+
+1. Checks for folders named Summary Files, Spectra Files, Coherence Files, PDF Spectra, Excluded Data, Analyzed, and creates them if they are not in the directory.
+
+2. Loops through each .txt files in the directory with the correct format `<subject>_<session>.txt` and passes it to the `analyze.logfile` function
+
+3. Concatenates the output to respective summary, spectra, coherence, and excluded channels data frames
+
+4. [see Data Output] Moves the `_summary` file into the Summary Files folder, the `_spectra` file into the Spectra Files folder, the `_coherence` file into the Coherence Files folder, the `_excludedchannels` file into the Excluded Data folder, all the PDF plots of the spectrograms or the coherence plots (if coherence.plots = TRUE) into the PDF Spectra folder, and moves the analyzed subject’s data into the Analyzed folder
+
+5. Once the loop is completed, it outputs .csv files that have the concatenated results for all analyzed subjects.
+
 
 ###`datacheck`
 
