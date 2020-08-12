@@ -416,7 +416,7 @@ mean.coherence <- function(cohr, freq, band) {
 }
 
 analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.75, 
-                            band_method="FBFW", coherence.plots = FALSE, min_samples_for_inclusion = 75, return_object = FALSE) {	
+                            band_method="FBFW", coherence.plots = FALSE, min_samples_for_inclusion = 75, wholeheadIAF = NULL, return_object = FALSE) {	
 	channels <- c("AF3", "F7", "F3", "FC5", 
 	              "T7", "P7", "O1", "O2", 
 	              "P8", "T8", "FC6", "F4", 
@@ -544,8 +544,13 @@ analyze.logfile <- function(subject, session, sampling=128, window=2, sliding=0.
 		  dataforiaf <- textdata
 		}
 		
-		dataforiaf$WholeHeadSpectrum <- rowMeans(dataforiaf[3:ncol(dataforiaf)])
-		wholeheadiaf <- iaf(dataforiaf$WholeHeadSpectrum, dataforiaf$Freq)$freq
+		if (is.null(wholeheadIAF)) {
+		  dataforiaf$WholeHeadSpectrum <- rowMeans(dataforiaf[3:ncol(dataforiaf)])
+		  wholeheadiaf <- iaf(dataforiaf$WholeHeadSpectrum, dataforiaf$Freq)$freq
+		} else {
+		  wholeheadiaf <- wholeheadIAF
+		}
+		
 		result[["WholeHeadIAF"]] <- wholeheadiaf
 		
 		#For anybody missing peaks in BOTH O1 AND O2, skip wholeheadIAF calculation and default to traditional FBFW

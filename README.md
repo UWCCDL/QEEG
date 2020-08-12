@@ -44,7 +44,9 @@ The other two methods calculate individualized bands based on the whole-head Ind
 
 7. `min_samples_for_inclusion` This is the minimum number of good samples (epochs with defined window size) that must be used in the estimate of a given channel’s spectral power to be included in the subsequent calculation of the whole-head IAF, and the spectral power and coherence for an electrode region.
 
-8. `return_object` This is a Boolean argument defaulted to FALSE. If TRUE, the function will return a list of objects [spectra, coherence, summary, excluded] that are automatically outputted into .txt files. Used for concatenating multiple subjects’ data in the `analyze.folder` function.
+8. `wholeheadIAF` This is an optional argument (default is NULL) in which the user can override the automatic calculation of the whole head IAF by inputting a value for the whole head IAF here. Useful if the user would like to map the same frequency bands from eyes-closed data onto eyes-open or on-task data.
+
+9. `return_object` This is a Boolean argument defaulted to FALSE. If TRUE, the function will return a list of objects [spectra, coherence, summary, excluded] that are automatically outputted into .txt files. Used for concatenating multiple subjects’ data in the `analyze.folder` function.
 
 The script will automatically run all the analysis (see below) and
 call the ancillary functions defined in the script.
