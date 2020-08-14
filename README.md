@@ -81,7 +81,7 @@ decibels.
 
 8. The channel-level alpha peak is identified as the highest value in a liberal alpha range (7-15 Hz) that is surrounded by two lower values.
 
-9. Electrode region analyses are conducted based on user-defined electrode networks (lines 427-432). A spectrogram for each region is created and appended to the spectra file by averaging the spectra for all good channels within that region. The mean power in each of the frequency bands is calculated and appended to the summary file.
+9. Electrode region analyses are conducted based on user-defined electrode networks (lines 425-430). A spectrogram for each region is created and appended to the spectra file by averaging the spectra for all good channels within that region. The mean power in each of the frequency bands is calculated and appended to the summary file.
 
 10. Coherence is calculated for every channel pairing following the same cleaning procedures for each time series in the pairing (see steps 1-5). Coherence is also calculated between and within each electrode region by averaging the coherence for channel pairings within or between regions in each frequency band.
 
@@ -189,7 +189,7 @@ series and flagging artifacts).
 ### Counters, Blinks, and Motion
 
 In addition to standard channels, the script handles count data
-(`Counter`) and gyro motion data (`GyroX`, `GyroY`, and `GyroZ). The default behavior of the script for a file missing these columns is to simply not consider them, and will not significantly impact the product.
+(`Counter`) and gyro motion data (`GyroX`, `GyroY`, and `GyroZ`). The default behavior of the script for a file missing these columns is to simply not consider them, and will not significantly impact the product.
 .
 
 ### Example
@@ -212,21 +212,21 @@ contains a summary of the frequency powers across all channels and electrode reg
 
 2. The `<subject>_<session>_spectra.txt` file. This is a text file
 with (_N_ + 1) rows and 40/_H_ columns, where _N_ is the number of
-channels in the log file and _H_ is the minimum resolution (in Hz) of
+channels in the log file plus one extra row for each electrode region, and _H_ is the minimum resolution (in Hz) of
 the script (which is defined by the value of the _window_ parameter). If using the default values in the script, the frequency resolution is 0.5 Hz, and therefore there is one column in this output for each 0.5 Hz frequency step.
 
-3. The `<subject>_<session>_coherence.txt` file. Like the `_spectra.txt` file, this is a text file with one row for each “Connection” (every channel pairing, every electrode region pairing) indicating the coherence at every frequency step. 
+3. The `<subject>_<session>_coherence.txt` file. Like the `_spectra.txt` file, this is a text file with one row for each Connection (every channel pairing, every electrode region pairing) indicating the coherence at every frequency step. 
 
-4. `subject`_`session`_excludedchannels.txt: one row per channel excluded from any part of the analysis, the reason for exclusion (“N samples or less”, “NoPeak”, “BadSpectrum”, “Missing O1 AND O2”), and what part(s) of the analysis it from which it was excluded (“WholeHeadIAF”, “Network Power and Coherence”, “Individualized Bands”). 
+4. `subject`_`session`_excludedchannels.txt: one row per channel excluded from any part of the analysis, the reason for exclusion (N samples or less, NoPeak, BadSpectrum, Missing O1 AND O2), and what part(s) of the analysis it from which it was excluded (WholeHeadIAF, Network Power and Coherence, Individualized Bands). 
 
 Exclusions:
-N samples or less: as defined in the argument `min_samples_for_inclusion`, any channel whose spectral power calculations were based on N-defined samples or less will be excluded from the calculation of the WholeHeadIAF and Network Power and Coherence. The default values (75 samples of window size 2) require 2.5 minutes of artifact-free data to be included in a channel’s power calculation to be included. 
+N samples or less: as defined in the argument `min_samples_for_inclusion`, any channel whose spectral power calculations were based on N-defined samples or less will be excluded from the calculation of the WholeHeadIAF and Network Power and Coherence. The default values (75 samples of window size 2) require 2.5 minutes of artifact-free data to be included in a channel`s power calculation to be included. 
 
-“NoPeak”: channels that do not have peaks in the alpha range that meet the peak detection criteria will be labeled as having “NoPeak” and will be excluded from the calculation of the WholeHeadIAF. This is to increase the signal present in the WholeHeadIAF calculation to only include channels that have a clearly-defined peak.
+NoPeak: channels that do not have peaks in the alpha range that meet the peak detection criteria will be labeled as having NoPeak and will be excluded from the calculation of the WholeHeadIAF. This is to increase the signal present in the WholeHeadIAF calculation to only include channels that have a clearly-defined peak.
 
-“BadSpectrum”: for each subject, the average spectral power for each channel between 0-40 Hz is calculated. Any channel whose average power is more than 3 SD above or below the all-channel average will be excluded for having bad data from the calculation of the WholeHeadIAF and Network Power and Coherence.
+BadSpectrum: for each subject, the average spectral power for each channel between 0-40 Hz is calculated. Any channel whose average power is more than 3 SD above or below the all-channel average will be excluded for having bad data from the calculation of the WholeHeadIAF and Network Power and Coherence.
 
-“Missing O1 AND O2”: any subject for whom a reliable peak was not detected in both electrodes O1 and O2 will be excluded from any individualized methods of calculating frequency bands. Posterior electrodes (O1, Oz, O2) are those in which alpha peaks are most readily detected; therefore, a subject who has no peak in those electrodes (Emotiv does not have Oz, therefore only O1 and O2 are included) will be deemed as having an unreliable peak, and will have fixed bands and fixed widths applied.  
+Missing O1 AND O2: any subject for whom a reliable peak was not detected in both electrodes O1 and O2 will be excluded from any individualized methods of calculating frequency bands. Posterior electrodes (O1, Oz, O2) are those in which alpha peaks are most readily detected; therefore, a subject who has no peak in those electrodes (Emotiv does not have Oz, therefore only O1 and O2 are included) will be deemed as having an unreliable peak, and will have fixed bands and fixed widths applied.  
 
 
 
@@ -237,7 +237,7 @@ following _pdf_ files:
 is the number of channels. Each file will plot the spectrogram
 (between 0 and 40 Hz) with different colors indicating the different
 frequency bands, and a _quality bar_, indicating the quality of the
-recording over time with dark marks indicating blinks. A red-filled diamond indicates the channel’s IAF, and an unfilled blue diamond indicates the subject’s WholeHeadIAF.
+recording over time with dark marks indicating blinks. A red-filled diamond indicates the channel’s IAF, and an unfilled blue diamond indicates the subject`s WholeHeadIAF.
 
 2. If coherence.plots = TRUE: _N_ * (_N_ - 1) / 2
 `<subject>_<session>_<coherence>_<channel1>_<channel2>.pdf` files,
