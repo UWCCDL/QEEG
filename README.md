@@ -15,7 +15,7 @@ To use this analysis, passing the following arguments:
 
 1. `subject` and `session` names. They will be combined into a single
 filename; for example, subject "Andy" in session "rest" would be
-combined to look for a file named ``Andy_rest1.txt`.
+combined to look for a file named `Andy_rest1.txt`.
 
 2. `sampling` This is the sampling rate, and defaults to 128Hz
 
@@ -29,24 +29,24 @@ number between 0 and 1 (__not__ a percentage!) and defaults to 0.75.
 
 5. `band_method` This is the method used to define the frequency bands. For all frequency bands, values lying on the lower bound are included in the frequency band but values lying on the upper bound go to the subsequent band. There are 3 options, as described in Doppelmayr, Klimesch, Pachinger, & Ripper (1998): 
 
-The default is “FBFW” (fixed bands, fixed width), in which delta < 4 Hz, theta is between 4-8 Hz, alpha is between 8-12.5 Hz, low beta is between 12.5-18 Hz, high beta is from 18-30 Hz, and gamma is 30-40 Hz.
+The default is `FBFW` (fixed bands, fixed width), in which delta < 4 Hz, theta is between 4-8 Hz, alpha is between 8-12.5 Hz, low beta is between 12.5-18 Hz, high beta is from 18-30 Hz, and gamma is 30-40 Hz.
 
-The other two methods calculate individualized bands based on the whole-head Individualized Alpha Frequency (IAF) as the center of the alpha band, and the other frequency bands are defined with respect to the IAF. Calculation of the IAF involves creating a single frequency spectrum using all the ‘good’ spectra (see excluded channels info), and running a peak detection algorithm on the whole head spectrum.
+The other two methods calculate individualized bands based on the whole-head Individualized Alpha Frequency (IAF) as the center of the alpha band, and the other frequency bands are defined with respect to the IAF. Calculation of the IAF involves creating a single frequency spectrum using all the `good` spectra (see excluded channels info), and running a peak detection algorithm on the whole head spectrum.
 
 
-“IBFW” (individualized bands, fixed width): with respect to the identified whole-head IAF, delta is defined as all frequencies below IAF – 6 Hz, theta from IAF – 6 Hz to IAF – 2 Hz, alpha from IAF – 2 Hz to IAF + 2.5 Hz, low beta from IAF + 2.5 Hz to IAF + 8 Hz, high beta from IAF + 8 Hz to IAF + 20 Hz, and gamma as anything between IAF + 20 Hz and 40 Hz (absolute, not with respect to the IAF).
+`IBFW` (individualized bands, fixed width): with respect to the identified whole-head IAF, delta is defined as all frequencies below IAF-6 Hz, theta from IAF-6 Hz to IAF-2 Hz, alpha from IAF-2 Hz to IAF+2.5 Hz, low beta from IAF+2.5 Hz to IAF+8 Hz, high beta from IAF+8 Hz to IAF+20 Hz, and gamma as anything between IAF+20 Hz and 40 Hz (absolute, not with respect to the IAF).
 
-“IBIW” (individualized bands, individualized width): with respect to the whole-head IAF, delta is defined as frequencies between 0 and IAF*0.4, theta from IAF*0.4 to IAF*0.8, alpha from IAF*0.8 to IAF*1.21, low beta from IAF*1.21 to IAF*1.8, high beta from IAF*1.8 to IAF*3, and gamma as anything between IAF*3 and 40 Hz.
+`IBIW` (individualized bands, individualized width): with respect to the whole-head IAF, delta is defined as frequencies between 0 and 0.4(IAF), theta from 0.4(IAF) to 0.8(IAF), alpha from 0.8(IAF) to 1.21(IAF), low beta from 1.21(IAF) to 1.8(IAF), high beta from 1.8(IAF) to 3(IAF), and gamma as anything between 3(IAF) and 40 Hz.
 
 *Note: if a subject does not have a detectable peak in both electrodes O1 and O2, the whole-head IAF will not be calculated and their data will be treated as though their peak is at 10 Hz, therefore providing the band estimates for the FBFW method.
 
 6. `coherence.plots` This is a Boolean argument defaulted to FALSE. If TRUE, the script will output a spectral coherence plot for every channel pairing in the same format as the spectra plots.
 
-7. `min_samples_for_inclusion` This is the minimum number of good samples (epochs with defined window size) that must be used in the estimate of a given channel’s spectral power to be included in the subsequent calculation of the whole-head IAF, and the spectral power and coherence for an electrode region.
+7. `min_samples_for_inclusion` This is the minimum number of good samples (epochs with defined window size) that must be used in the estimate of a given channel`s spectral power to be included in the subsequent calculation of the whole-head IAF, and the spectral power and coherence for an electrode region.
 
 8. `wholeheadIAF` This is an optional argument (default is NULL) in which the user can override the automatic calculation of the whole head IAF by inputting a value for the whole head IAF here. Useful if the user would like to map the same frequency bands from eyes-closed data onto eyes-open or on-task data.
 
-9. `return_object` This is a Boolean argument defaulted to FALSE. If TRUE, the function will return a list of objects [spectra, coherence, summary, excluded] that are automatically outputted into .txt files. Used for concatenating multiple subjects’ data in the `analyze.folder` function.
+9. `return_object` This is a Boolean argument defaulted to FALSE. If TRUE, the function will return a list of objects [spectra, coherence, summary, excluded] that are automatically outputted into .txt files. Used for concatenating multiple subjects` data in the `analyze.folder` function.
 
 The script will automatically run all the analysis (see below) and
 call the ancillary functions defined in the script.
@@ -81,7 +81,7 @@ decibels.
 
 8. The channel-level alpha peak is identified as the highest value in a liberal alpha range (7-15 Hz) that is surrounded by two lower values.
 
-9. Electrode region analyses are conducted based on user-defined electrode networks (lines 427-432). A spectrogram for each region is created and appended to the spectra file by averaging the spectra for all ‘good’ channels within that region. The mean power in each of the frequency bands is calculated and appended to the summary file.
+9. Electrode region analyses are conducted based on user-defined electrode networks (lines 427-432). A spectrogram for each region is created and appended to the spectra file by averaging the spectra for all good channels within that region. The mean power in each of the frequency bands is calculated and appended to the summary file.
 
 10. Coherence is calculated for every channel pairing following the same cleaning procedures for each time series in the pairing (see steps 1-5). Coherence is also calculated between and within each electrode region by averaging the coherence for channel pairings within or between regions in each frequency band.
 
@@ -94,12 +94,18 @@ Able to perform the `analyze.logfile` function across many files at once.
 2. Set the working directory to that folder.
 
 3. Run `analyze.folder`, passing the following arguments:
+
 `session`: everything to the right of the underscore
+
 Optional:
 `sampling` default to 128 Hz
+
 `window` defaults to 2 (sec)
-`band_method` defaults to “FBFW”
+
+`band_method` defaults to `FBFW`
+
 `coherence.plots` defaults to FALSE
+
 `min_samples_for_inclusion` defaults to 75
 
 The function performs the following actions:
@@ -120,12 +126,18 @@ The function performs the following actions:
 Immediately after collecting data, it is important to verify data quality and usability. This function will conduct a simplified version of the analyze.logfile function. Assume all arguments and defaults are the same unless indicated.
 
 Arguments:
+
 `subject`
+
 `session`
 
+
 `sampling`
+
 `window`
+
 `sliding`
+
 
 `min_samples_to_include`
 
@@ -135,9 +147,9 @@ Process:
 
 2. Check every channel for a detectable peak.
 
-3. Output spectrogram (PDF) of every channel’s FFT, including data quality and blink information across the bottom.
+3. Output spectrogram (PDF) of every channel`s FFT, including data quality and blink information across the bottom.
 
-4. Output `<subject>_<session>_samplesperchannel.txt` file with one row for every channel indicating the number of usable samples, and for each channel, whether it would be included for any reason in the `excludedchannels` output file (BadSpectrum, NoPeak, N samples or less; note, Missing O1 and O2 can be determined by looking for “NoPeak” on electrodes O1 and O2). 
+4. Output `<subject>_<session>_samplesperchannel.txt` file with one row for every channel indicating the number of usable samples, and for each channel, whether it would be included for any reason in the `excludedchannels` output file (BadSpectrum, NoPeak, N samples or less; note, Missing O1 and O2 can be determined by looking for NoPeak on electrodes O1 and O2). 
 
 ## EEG Data File format
 
