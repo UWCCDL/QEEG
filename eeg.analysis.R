@@ -861,7 +861,11 @@ datacheck <- function(subject, session, sampling=128, window=2, sliding=0.75, mi
                                        "Reason" = rep("BadSpectrum", length(badspectra)),
                                        "ExcludeFrom" = rep("WholeHeadIAF, Network Power and Coherence", length(badspectra)))
       } else {
-        exclude_channels <- rbind(cbind(subject, session, names(badspectra), "BadSpectrum", "WholeHeadIAF, Network Power and Coherence"))
+        exclude_channels <- rbind(exclude_channels, data.frame("Subject" = rep(subject, length(badspectra)),
+                                                               "Session" = rep(session, length(badspectra)),
+                                                               "Channel" = names(badspectra),
+                                                               "Reason" = rep("BadSpectrum", length(badspectra)),
+                                                               "ExcludeFrom" = rep("WholeHeadIAF, Network Power and Coherence", length(badspectra))))
       }
     }
     
