@@ -160,7 +160,7 @@ script assume that column have names (for example, `AF3`) that correspond
 to individual channels. See below for ways to convert other data types
 into this format.
 
-###Blink column
+### Blink column
 
 Emotiv includes automatic blink detection that is outputted as a column of 1s (actively blinking) and 0s (eyes open). This is used to exclude any epochs that have blinks detected.
 
@@ -265,7 +265,7 @@ specified above to work with our QEEG script.  This is usually fairly easy to do
 
 As noted in the Blink section, the treatment of artifact detection and removal will be an important step in figuring out how to use this script with other formats. 
 
-As an example, I have provided here a shell script that converts the native OpenBCI format to our R-friendly format, together with a version of our script (`eeg.analysis.obci.new.r`) that has already been parametrized for OpenBCI Cyton boards.  The script is named  . The script simply reads the OpenBCI data file, and reformats it in our native format. Because OpenBCI headsets can use any arbitrary montage, the name of the channels needs to be supplied; the script will assume that the correct description can be found in the `header.txt` file.  
+As an example, the `other_formats` folder contains some code that could be used a guide to adapt the script to other EEG data formats. In particular, the folder contains a shell script that converts the native OpenBCI format to our R-friendly format, together with a version of our script (`eeg.analysis.obci.new.r`) that has already been parametrized for OpenBCI Cyton boards.  The script is named  `convert_to_emotiv.sh`. The script simply reads the OpenBCI data file, and reformats it in our native format. Because OpenBCI headsets can use any arbitrary montage, the name of the channels needs to be supplied; the script will assume that the correct description can be found in the `header.txt` file.  
 
 # Corrections for Multiple Comparisons
 
