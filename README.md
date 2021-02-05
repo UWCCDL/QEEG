@@ -9,7 +9,7 @@ for QEEG analysis.
 The analysis is straightforward; you only need to load the script into
 R (version >3.1). You can then call the `analyze.logfile` function to run a full analysis of the data for one subject, the `analyze.folder` function to run the `analyze.logfile` function on many subjects at a time and concatenate their output, or you can run the `datacheck` function immediately after collecting data to determine its usability. 
 
-### `analyze.logfile`
+### The `analyze.logfile` function
 
 To use this analysis, passing the following arguments:
 
