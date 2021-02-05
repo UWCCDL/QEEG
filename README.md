@@ -9,7 +9,7 @@ for QEEG analysis.
 The analysis is straightforward; you only need to load the script into
 R (version >3.1). You can then call the `analyze.logfile` function to run a full analysis of the data for one subject, the `analyze.folder` function to run the `analyze.logfile` function on many subjects at a time and concatenate their output, or you can run the `datacheck` function immediately after collecting data to determine its usability. 
 
-###`analyze.logfile`
+### `analyze.logfile`
 
 To use this analysis, passing the following arguments:
 
@@ -85,7 +85,7 @@ decibels.
 
 10. Coherence is calculated for every channel pairing following the same cleaning procedures for each time series in the pairing (see steps 1-5). Coherence is also calculated between and within each electrode region by averaging the coherence for channel pairings within or between regions in each frequency band.
 
-###`analyze.folder`
+### `analyze.folder`
 
 Able to perform the `analyze.logfile` function across many files at once. 
 
@@ -121,7 +121,7 @@ The function performs the following actions:
 5. Once the loop is completed, it outputs .csv files that have the concatenated results for all analyzed subjects.
 
 
-###`datacheck`
+### `datacheck`
 
 Immediately after collecting data, it is important to verify data quality and usability. This function will conduct a simplified version of the analyze.logfile function. Assume all arguments and defaults are the same unless indicated.
 
