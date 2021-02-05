@@ -11,7 +11,7 @@ R (version >3.1). You can then call the `analyze.logfile` function to run a full
 
 ### The `analyze.logfile` function
 
-To use this analysis, passing the following arguments:
+To use this analysis, pass the following arguments:
 
 1. `subject` and `session` names. They will be combined into a single
 filename; for example, subject "Andy" in session "rest" would be
