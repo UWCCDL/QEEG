@@ -20,7 +20,7 @@ combined to look for a file named `Andy_rest1.txt`.
 2. `sampling` This is the sampling rate, and defaults to 128Hz
 
 3. `window` This is the duration (in seconds) of each segment (epoch)
-used as the bases of the FFT analysis. It defaults to 2 seconds.
+used as the basis of the FFT analysis. It defaults to 2 seconds.
 
 4. `sliding` This is the proportion of each segment that does __not__
 overlap with the previous segment. In other words, the proportion of
@@ -116,7 +116,7 @@ The function performs the following actions:
 
 3. Concatenates the output to respective summary, spectra, coherence, and excluded channels data frames
 
-4. [see Data Output] Moves the `_summary` file into the Summary Files folder, the `_spectra` file into the Spectra Files folder, the `_coherence` file into the Coherence Files folder, the `_excludedchannels` file into the Excluded Data folder, all the PDF plots of the spectrograms or the coherence plots (if coherence.plots = TRUE) into the PDF Spectra folder, and moves the analyzed subject’s data into the Analyzed folder
+4. [see Data Output] Moves the `_summary` file into the Summary Files folder, the `_spectra` file into the Spectra Files folder, the `_coherence` file into the Coherence Files folder, the `_excludedchannels` file into the Excluded Data folder, all the PDF plots of the spectrograms or the coherence plots (if coherence.plots = TRUE) into the PDF Spectra folder, and moves the analyzed subject√ïs data into the Analyzed folder
 
 5. Once the loop is completed, it outputs .csv files that have the concatenated results for all analyzed subjects.
 
@@ -156,7 +156,7 @@ Process:
 The script does not assume any specific EEG data file format (such as
 .edf). Instead, it assumes that the data is formatted in an R-friendly
 way, with each sample in a row, and each channel in a column. The
-script assume that column have names (for example, `AF3`) that correspond
+script assumes that column have names (for example, `AF3`) that correspond
 to individual channels. See below for ways to convert other data types
 into this format.
 
@@ -226,7 +226,7 @@ NoPeak: channels that do not have peaks in the alpha range that meet the peak de
 
 BadSpectrum: for each subject, the average spectral power for each channel between 0-40 Hz is calculated. Any channel whose average power is more than 3 SD above or below the all-channel average will be excluded for having bad data from the calculation of the WholeHeadIAF and Network Power and Coherence.
 
-Missing O1 AND O2: any subject for whom a reliable peak was not detected in both electrodes O1 and O2 will be excluded from any individualized methods of calculating frequency bands. Posterior electrodes (O1, Oz, O2) are those in which alpha peaks are most readily detected; therefore, a subject who has no peak in those electrodes (Emotiv does not have Oz, therefore only O1 and O2 are included) will be deemed as having an unreliable peak, and will have fixed bands and fixed widths applied.  
+Missing O1 AND O2: any subject for whom a reliable peak was not detected in both electrodes O1 and O2 will be excluded from any individualized methods of calculating frequency bands. Posterior electrodes (O1, Oz, O2) are those in which alpha peaks are most readily detected; therefore, a subject who has no peak in those electrodes (Emotiv does not have Oz, therefore only O1 and O2 are included) will be deemed as having an unreliable peak and will have fixed bands and fixed widths applied.  
 
 
 
@@ -237,7 +237,7 @@ following _pdf_ files:
 is the number of channels. Each file will plot the spectrogram
 (between 0 and 40 Hz) with different colors indicating the different
 frequency bands, and a _quality bar_, indicating the quality of the
-recording over time with dark marks indicating blinks. A red-filled diamond indicates the channel’s IAF, and an unfilled blue diamond indicates the subject`s WholeHeadIAF.
+recording over time with dark marks indicating blinks. A red-filled diamond indicates the channel√ïs IAF, and an unfilled blue diamond indicates the subject`s WholeHeadIAF.
 
 2. If coherence.plots = TRUE: _N_ * (_N_ - 1) / 2
 `<subject>_<session>_<coherence>_<channel1>_<channel2>.pdf` files,
@@ -269,4 +269,4 @@ As an example, the `other_formats` folder contains some code that could be used 
 
 # Corrections for Multiple Comparisons
 
-One of the problems with QEEG analysis is that researchers often have to repeat the same test across multiple channels. This creates, of course, a multiple comparisons problem. Traditional solutions to this problem do not work wellw with EEG channel data, because pretty much every measures that can be extracted from the channels' timeseries (power, coherence, etc.) is highly correlated between channels. Thus, a a Bonferroni-type correction would be unrealistically strong, and a FDR correction wil be crippled by the fact that the distrbution of p-values is fairly narrow.  Here I have provided a simple script, `alphasimeeg.py`, that adapts to EEG the solution originally proposed for fMRI data by the AFNI software development team. In essence, given a mean correlation between channels (which can be estimated easily), the script will perform Monte Carlo simulations and tally up the number of significant results that can be obtained by chance alone.    
+One of the problems with QEEG analysis is that researchers often have to repeat the same test across multiple channels. This creates, of course, a multiple comparisons problem. Traditional solutions to this problem do not work wellw with EEG channel data, because pretty much every measures that can be extracted from the channels' timeseries (power, coherence, etc.) is highly correlated between channels. Thus, a a Bonferroni-type correction would be unrealistically strong, and a FDR correction will be crippled by the fact that the distribution of p-values is fairly narrow.  Here I have provided a simple script, `alphasimeeg.py`, that adapts to EEG the solution originally proposed for fMRI data by the AFNI software development team. In essence, given a mean correlation between channels (which can be estimated easily), the script will perform Monte Carlo simulations and tally up the number of significant results that can be obtained by chance alone.    
