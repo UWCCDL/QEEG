@@ -116,7 +116,7 @@ The function performs the following actions:
 
 3. Concatenates the output to respective summary, spectra, coherence, and excluded channels data frames
 
-4. [see Data Output] Moves the `_summary` file into the Summary Files folder, the `_spectra` file into the Spectra Files folder, the `_coherence` file into the Coherence Files folder, the `_excludedchannels` file into the Excluded Data folder, all the PDF plots of the spectrograms or the coherence plots (if coherence.plots = TRUE) into the PDF Spectra folder, and moves the analyzed subject’s data into the Analyzed folder
+4. [see Data Output] Moves the `_summary` file into the Summary Files folder, the `_spectra` file into the Spectra Files folder, the `_coherence` file into the Coherence Files folder, the `_excludedchannels` file into the Excluded Data folder, all the PDF plots of the spectrograms or the coherence plots (if coherence.plots = TRUE) into the PDF Spectra folder, and moves the analyzed subject√ïs data into the Analyzed folder
 
 5. Once the loop is completed, it outputs .csv files that have the concatenated results for all analyzed subjects.
 
@@ -237,7 +237,7 @@ following _pdf_ files:
 is the number of channels. Each file will plot the spectrogram
 (between 0 and 40 Hz) with different colors indicating the different
 frequency bands, and a _quality bar_, indicating the quality of the
-recording over time with dark marks indicating blinks. A red-filled diamond indicates the channel’s IAF, and an unfilled blue diamond indicates the subject`s WholeHeadIAF.
+recording over time with dark marks indicating blinks. A red-filled diamond indicates the channel√ïs IAF, and an unfilled blue diamond indicates the subject`s WholeHeadIAF.
 
 2. If coherence.plots = TRUE: _N_ * (_N_ - 1) / 2
 `<subject>_<session>_<coherence>_<channel1>_<channel2>.pdf` files,
@@ -269,4 +269,4 @@ As an example, the `other_formats` folder contains some code that could be used 
 
 # Corrections for Multiple Comparisons
 
-One of the problems with QEEG analysis is that researchers often have to repeat the same test across multiple channels. This creates, of course, a multiple comparisons problem. Traditional solutions to this problem do not work wellw with EEG channel data, because pretty much every measures that can be extracted from the channels' timeseries (power, coherence, etc.) is highly correlated between channels. Thus, a a Bonferroni-type correction would be unrealistically strong, and a FDR correction wil be crippled by the fact that the distrbution of p-values is fairly narrow.  Here I have provided a simple script, `alphasimeeg.py`, that adapts to EEG the solution originally proposed for fMRI data by the AFNI software development team. In essence, given a mean correlation between channels (which can be estimated easily), the script will perform Monte Carlo simulations and tally up the number of significant results that can be obtained by chance alone.    
+One of the problems with QEEG analysis is that researchers often have to repeat the same test across multiple channels. This creates, of course, a multiple comparisons problem. Traditional solutions to this problem do not work well with EEG channel data, because pretty much every measures that can be extracted from the channels' timeseries (power, coherence, etc.) is highly correlated between channels. Thus, a Bonferroni-type correction would be unrealistically strong, and a FDR correction will be crippled by the fact that the distribution of p-values is fairly narrow.  Here I have provided a simple script, `alphasimeeg.py`, that adapts to EEG the solution originally proposed for fMRI data by the AFNI software development team. In essence, given a mean correlation between channels (which can be estimated easily), the script will perform Monte Carlo simulations and tally up the number of significant results that can be obtained by chance alone.    
